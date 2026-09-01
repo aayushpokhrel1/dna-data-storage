@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.ipynb_checkpoints/
+
+# ML / sim artifacts
+*.pt
+*.pth
+*.ckpt
+*.npy
+*.npz
+*.h5
+*.hdf5
+
+# Large data (keep only small/synthetic inputs tracked; force-add if needed)
+data/**
+!data/.gitkeep
+!data/README.md
+
+# Results: keep figures/metrics tracked by default; ignore heavy intermediates
+results/**/*.tmp
+
+# LaTeX aux
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# Internal handover note (session onboarding, not part of the published project)
+HANDOVER.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
