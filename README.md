@@ -1,8 +1,10 @@
 # DNA Data Storage: A Constraint-Aware Codec with Error Correction
 
-> **Status: early scaffold.** This repository is being set up for a research
-> paper. There is no code or result here yet. Sections are marked **planned** so it
-> is always clear what exists and what does not.
+> **Status: M1 done.** The constraint-aware codec (rotating code) encodes bytes to
+> DNA oligos and back, exact round-trip, homopolymer runs bounded to 1 by
+> construction, indexed oligos for an addressable pool. Code in `src/codec.py` and
+> `src/constraints.py`, checks in `src/test_codec.py`. Later sections are still
+> marked **planned** so it is always clear what exists and what does not.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -65,8 +67,13 @@ A runnable, tested codec plus a benchmark, kept honest and measurable:
 
 ## Roadmap (planned)
 
-- [ ] **M1 - Encoding.** Constraint-aware bits-to-DNA mapping, with a check that the
-      output meets GC and homopolymer constraints and round-trips without a channel.
+- [x] **M1 - Encoding.** Constraint-aware rotating-code codec in `src/codec.py`
+      (bytes <-> DNA oligos, ECC-agnostic) with shared constraint measurement in
+      `src/constraints.py`. Homopolymer runs are bounded to 1 by construction and the
+      codec round-trips exactly with no channel; GC is measured and reported (a hard
+      GC window is the screening codec's job, later). Oligos are indexed so decode
+      reassembles from a shuffled or partial pool. Checks in `src/test_codec.py`.
+      Design: `docs/superpowers/specs/2026-09-10-m1-encoding-design.md`.
 - [ ] **M2 - Error correction.** Add the coding layer; recover from substitutions
       and from insertions and deletions.
 - [ ] **M3 - Channel and benchmark.** Simulate synthesis and sequencing errors;
