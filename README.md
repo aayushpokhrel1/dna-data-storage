@@ -1,10 +1,10 @@
 # DNA Data Storage: A Constraint-Aware Codec with Error Correction
 
-> **Status: M1 done.** The constraint-aware codec (rotating code) encodes bytes to
-> DNA oligos and back, exact round-trip, homopolymer runs bounded to 1 by
-> construction, indexed oligos for an addressable pool. Code in `src/codec.py` and
-> `src/constraints.py`, checks in `src/test_codec.py`. Later sections are still
-> marked **planned** so it is always clear what exists and what does not.
+> **Status: M2 done.** The constraint-aware rotating codec (M1) plus a Reed-Solomon
+> error-correction layer (M2) that recovers dropped and corrupted oligos. Code in
+> `src/codec.py`, `src/constraints.py`, `src/ecc.py`; checks in `src/test_codec.py`
+> and `src/test_ecc.py` (12 assertions passing). Later sections are still marked
+> **planned** so it is always clear what exists and what does not.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -74,8 +74,16 @@ A runnable, tested codec plus a benchmark, kept honest and measurable:
       GC window is the screening codec's job, later). Oligos are indexed so decode
       reassembles from a shuffled or partial pool. Checks in `src/test_codec.py`.
       Design: `docs/superpowers/specs/2026-09-10-m1-encoding-design.md`.
-- [ ] **M2 - Error correction.** Add the coding layer; recover from substitutions
-      and from insertions and deletions.
+- [x] **M2 - Error correction.** Reed-Solomon layer in `src/ecc.py` wrapping the M1
+      codec, detect-and-erase: a per-oligo CRC (over index + data) flags any damaged
+      oligo, and a systematic striped RS outer code (over GF(256), via `reedsolo`)
+      reconstructs up to `parity_records` erased or corrupted oligos per block.
+      Substitutions and indels both reduce to "bad oligo -> erasure". Checks in
+      `src/test_ecc.py`. Design:
+      `docs/superpowers/specs/2026-09-11-m2-ecc-design.md`.
+- [ ] **M2b - Fountain codec.** Add an LT/fountain codec (Erlich 2017) so the
+      benchmark compares RS-vs-fountain, alongside the rotating-vs-screening codec
+      comparison. Also open: in-place inner correction of small substitutions.
 - [ ] **M3 - Channel and benchmark.** Simulate synthesis and sequencing errors;
       measure density, overhead, and recovery versus error rate.
 - [ ] **M4 - Figures.** Recovery curves, density and overhead, constraint

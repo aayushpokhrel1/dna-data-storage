@@ -34,7 +34,12 @@ def _trits_to_dna(trits, prev=SEED_BASE):
 def _dna_to_trits(seq, prev=SEED_BASE):
     trits = []
     for b in seq:
-        trits.append(_alts(prev).index(b))
+        alts = _alts(prev)
+        # Corruption-tolerant: a substitution can make a base equal its
+        # predecessor (violating the rotating invariant) or otherwise land
+        # outside the alternatives. Emit a placeholder trit and keep going;
+        # the resulting byte error is caught by the M2 inner code.
+        trits.append(alts.index(b) if b in alts else 0)
         prev = b
     return trits
 
@@ -93,17 +98,31 @@ def oligo_index(oligo, meta):
     return _trits_to_int(trits[: meta["index_trits"]])
 
 
-def decode(oligos, meta):
-    """Reassemble the original bytes from oligos (any order)."""
-    chunks = {}
+def decode_records(oligos, meta):
+    """Recover surviving records keyed by index: {index: payload_bytes}.
+
+    Only oligos that are present are returned, so callers (the M2 ECC layer)
+    can see which indices are missing and treat them as erasures. A payload
+    integer wider than payload_bytes (corruption) is masked to fit rather than
+    raising, so a bad read still yields a record for the inner code to reject.
+    """
+    records = {}
+    span = 256 ** meta["payload_bytes"]
     for o in oligos:
         trits = _dna_to_trits(o, meta["seed"])
         idx = _trits_to_int(trits[: meta["index_trits"]])
-        val = _trits_to_int(trits[meta["index_trits"]:])
-        chunks[idx] = val.to_bytes(meta["payload_bytes"], "big")
-    if not chunks:
+        val = _trits_to_int(trits[meta["index_trits"]:]) % span
+        records[idx] = val.to_bytes(meta["payload_bytes"], "big")
+    return records
+
+
+def decode(oligos, meta):
+    """Reassemble the original bytes from oligos (any order). No error
+    correction: assumes every oligo is present and clean."""
+    records = decode_records(oligos, meta)
+    if not records:
         return b""
-    data = b"".join(chunks[i] for i in range(len(chunks)))
+    data = b"".join(records[i] for i in range(len(records)))
     return data[: meta["total_len"]]
 
 
