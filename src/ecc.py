@@ -93,10 +93,15 @@ def decode(oligos, meta):
     D, P = e["data_bytes"], e["parity_records"]
     outer = RSCodec(P)
 
-    # Read every oligo; keep only CRC-valid records, keyed by decoded index.
-    reads = codec.decode_records(oligos, meta)  # {index: record_len bytes}
+    # Decode reads individually and keep the first CRC-valid read per index.
+    # With sequencing coverage (multiple reads per oligo), one clean read is
+    # enough to fill a slot, so a damaged read of an otherwise-covered oligo
+    # does not cost an erasure.
     good = {}
-    for idx, framed in reads.items():
+    for oligo in oligos:
+        idx, framed = codec.decode_one(oligo, meta)
+        if idx in good:
+            continue
         rec, crc = framed[:D], framed[D:D + CRC_BYTES]
         if _crc(idx, rec) == int.from_bytes(crc, "big"):
             good[idx] = rec

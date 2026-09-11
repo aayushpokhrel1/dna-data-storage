@@ -1,9 +1,11 @@
 # DNA Data Storage: A Constraint-Aware Codec with Error Correction
 
-> **Status: M2 done.** The constraint-aware rotating codec (M1) plus a Reed-Solomon
-> error-correction layer (M2) that recovers dropped and corrupted oligos. Code in
-> `src/codec.py`, `src/constraints.py`, `src/ecc.py`; checks in `src/test_codec.py`
-> and `src/test_ecc.py` (12 assertions passing). Later sections are still marked
+> **Status: M3 done.** Constraint-aware rotating codec (M1), Reed-Solomon error
+> correction (M2), and a seeded synthesis/sequencing channel + recovery benchmark
+> (M3). With coverage 10 the codec recovers fully through ~1% per-base error, ~0.85
+> at 2%, failing by 5% (`results/benchmark.json`). Error rates and prior art are
+> cited in `paper/references.bib` (verified 2026-09-11). Code in `src/` with 26
+> passing assertion checks across five `test_*.py` files. Later sections are marked
 > **planned** so it is always clear what exists and what does not.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
@@ -84,8 +86,15 @@ A runnable, tested codec plus a benchmark, kept honest and measurable:
 - [ ] **M2b - Fountain codec.** Add an LT/fountain codec (Erlich 2017) so the
       benchmark compares RS-vs-fountain, alongside the rotating-vs-screening codec
       comparison. Also open: in-place inner correction of small substitutions.
-- [ ] **M3 - Channel and benchmark.** Simulate synthesis and sequencing errors;
-      measure density, overhead, and recovery versus error rate.
+- [x] **M3 - Channel and benchmark.** Seeded synthesis/sequencing channel
+      (`src/channel.py`: per-base substitution/insertion/deletion, whole-oligo
+      dropout, sequencing coverage) and a recovery benchmark (`src/benchmark.py`:
+      recovery vs per-base rate, density in bits/nt, code rate, per-oligo GC and
+      homopolymer stats -> `results/benchmark.json`). Error range and sub:ins:del
+      ratio framed on cited literature (`paper/references.bib`, verified against the
+      sources); `src/check_citations.py` guards citation integrity. Checks in
+      `src/test_channel.py` and `src/test_benchmark.py`. Design:
+      `docs/superpowers/specs/2026-09-11-m3-channel-benchmark-design.md`.
 - [ ] **M4 - Figures.** Recovery curves, density and overhead, constraint
       distributions.
 - [ ] **M5 - Paper draft.** Write the manuscript in `paper/`.

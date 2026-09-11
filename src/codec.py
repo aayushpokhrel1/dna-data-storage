@@ -98,22 +98,29 @@ def oligo_index(oligo, meta):
     return _trits_to_int(trits[: meta["index_trits"]])
 
 
-def decode_records(oligos, meta):
-    """Recover surviving records keyed by index: {index: payload_bytes}.
+def decode_one(oligo, meta):
+    """Decode one oligo (one read) to (index, payload_bytes).
 
-    Only oligos that are present are returned, so callers (the M2 ECC layer)
-    can see which indices are missing and treat them as erasures. A payload
-    integer wider than payload_bytes (corruption) is masked to fit rather than
-    raising, so a bad read still yields a record for the inner code to reject.
+    A payload integer wider than payload_bytes (corruption) is masked to fit
+    rather than raising, so a bad read still yields a record the caller can
+    reject via its own integrity check.
     """
-    records = {}
     span = 256 ** meta["payload_bytes"]
-    for o in oligos:
-        trits = _dna_to_trits(o, meta["seed"])
-        idx = _trits_to_int(trits[: meta["index_trits"]])
-        val = _trits_to_int(trits[meta["index_trits"]:]) % span
-        records[idx] = val.to_bytes(meta["payload_bytes"], "big")
-    return records
+    trits = _dna_to_trits(oligo, meta["seed"])
+    idx = _trits_to_int(trits[: meta["index_trits"]])
+    val = _trits_to_int(trits[meta["index_trits"]:]) % span
+    return idx, val.to_bytes(meta["payload_bytes"], "big")
+
+
+def decode_records(oligos, meta):
+    """Recover records keyed by index: {index: payload_bytes}.
+
+    Only present indices appear, so callers (the M2 ECC layer) can see which
+    are missing and treat them as erasures. Duplicate reads of one index (from
+    sequencing coverage) collapse here (last wins); the ECC layer decodes reads
+    individually so it can keep an integrity-valid read instead.
+    """
+    return dict(decode_one(o, meta) for o in oligos)
 
 
 def decode(oligos, meta):
