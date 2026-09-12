@@ -69,6 +69,17 @@ def test_compare_families_reports_all_four():
     assert fam["screening+RS"]["bits_per_nt"] > fam["rotating+RS"]["bits_per_nt"]
 
 
+def test_cost_grid_shape_and_monotonic():
+    data = bytes(range(256))
+    cov, ov = [1, 4, 16], [0.25, 0.5, 1.0]
+    g = benchmark.cost_grid(data, rate=0.01, coverages=cov, overheads=ov, trials=3)
+    rec = g["recovery"]
+    assert len(rec) == 3 and all(len(r) == 3 for r in rec)
+    assert all(0.0 <= v <= 1.0 for r in rec for v in r)
+    # more coverage helps (weakly) at the highest redundancy
+    assert rec[-1][-1] >= rec[0][-1]
+
+
 def test_code_rate_keys():
     oligos, meta = ecc.encode(DATA, data_bytes=8, parity_records=4)
     cr = benchmark.code_rate(len(DATA), oligos, meta)

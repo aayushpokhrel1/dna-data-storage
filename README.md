@@ -10,9 +10,11 @@
 > codec/ECC families across density, robustness, and cost: the screening codec (S1,
 > `src/screen_codec.py`, ~2 bits/nt with a guaranteed GC window) and the fountain
 > codec (S2, `src/fountain.py`), and the cross-family benchmark + density-robustness
-> Pareto frontier (S3) are done; screening+RS dominates the frontier at the tested
-> operating point. Code in `src/` with 41 passing assertion checks across seven
-> `test_*.py` files. Remaining sections are marked **planned**.
+> Pareto frontier (S3), and the coverage/parity cost study (S4) are done; screening+RS
+> dominates the density-robustness frontier, and RS matches or beats fountain at fixed
+> redundancy (fountain's edge is ratelessness, not fixed-N erasure efficiency). Code
+> in `src/` with 42 passing assertion checks across seven `test_*.py` files. Remaining
+> sections are marked **planned**.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -134,8 +136,17 @@ access. Kept computational and honest, no "DNA beats silicon".
       here; fountain trails RS at this small block size (its edge is large,
       dropout-heavy pools). Checks in `src/test_crossfamily.py` and
       `src/test_benchmark.py`.
-- [ ] **S4 - Coverage/parity cost study.** Pareto-optimal (coverage x redundancy)
-      budget for a target recovery at a given error rate.
+- [x] **S4 - Coverage/parity cost study.** `benchmark.cost_grid` sweeps recovery
+      over the (coverage x redundancy) grid at a fixed error rate ->
+      `results/figures/cost_grid.png` with an iso-recovery frontier: coverage and
+      parity are substitutable budgets (full recovery at coverage 16 / 0.25x
+      overhead == coverage 8 / 1x == coverage 4 / 2x). `benchmark.dropout_study`
+      compares RS vs fountain at 30% whole-oligo dropout and large K
+      (`results/figures/dropout.png`). Honest finding: RS (MDS-optimal for erasures)
+      matches or beats fountain at fixed redundancy (full recovery at 0.75x vs 1x);
+      fountain's real value is ratelessness (droplets on demand), which a fixed-N
+      benchmark does not reward. Data in `results/cost_study.json`. Checks in
+      `src/test_benchmark.py`.
 - [ ] **S5 - Random-access demo.** Retrieve one file from a mixed pool of many;
       measure reads needed. Realizes the addressable-oligo design.
 - [ ] **S6 - Indel-correcting inner code.** Marker/watermark code that corrects

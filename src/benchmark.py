@@ -131,7 +131,7 @@ def sweep(data, rates, trials, seed, **kwargs):
 
 
 def _family_recovery(data, rate, trials, seed, base, layer, enc_kwargs,
-                     coverage, ratio=LIT_RATIO):
+                     coverage, ratio=LIT_RATIO, p_drop=0.0):
     """Fraction of trials that a given (base codec, ECC layer) family recovers."""
     total = sum(ratio)
     p_sub, p_ins, p_del = (rate * r / total for r in ratio)
@@ -139,7 +139,7 @@ def _family_recovery(data, rate, trials, seed, base, layer, enc_kwargs,
     ok = 0
     for t in range(trials):
         reads = channel.corrupt(oligos, p_sub=p_sub, p_ins=p_ins, p_del=p_del,
-                                coverage=coverage, seed=seed + t)
+                                p_drop=p_drop, coverage=coverage, seed=seed + t)
         try:
             if layer.decode(reads, meta, base=base) == data:
                 ok += 1
@@ -181,12 +181,81 @@ def compare_families(data, rates, overhead=1.0, coverage=6, trials=8,
             "families": out}
 
 
+def _enc_kwargs(layer, ov, K, data_bytes, block_records):
+    """Build encode kwargs for a family at redundancy `ov` (extra fraction).
+
+    RS parity is per block, so it scales with the block size (not global K); that
+    keeps the redundancy fraction ov matched to fountain and within the GF(256)
+    block limit when K forces multiple blocks.
+    """
+    if layer is ecc:
+        bsize = block_records or K
+        return dict(data_bytes=data_bytes, parity_records=max(1, round(bsize * ov)),
+                    block_records=bsize)
+    return dict(data_bytes=data_bytes, overhead=ov)
+
+
+def cost_grid(data, rate, coverages, overheads, base=codec, layer=ecc,
+              data_bytes=16, trials=8, seed=0, p_drop=0.0, block_records=None):
+    """Recovery over a (coverage x redundancy) grid at a fixed error rate.
+
+    Sequencing coverage costs reads; redundancy costs synthesized bases. The grid,
+    and the iso-recovery frontier through it, show the cheapest budget that still
+    recovers. Rows are coverages, columns are overheads.
+    """
+    K = max(1, -(-len(data) // data_bytes))
+    recovery = []
+    for cov in coverages:
+        row = []
+        for ov in overheads:
+            enc = _enc_kwargs(layer, ov, K, data_bytes, block_records)
+            row.append(_family_recovery(data, rate, trials, seed, base, layer, enc,
+                                        cov, p_drop=p_drop))
+        recovery.append(row)
+    return {"coverages": list(coverages), "overheads": list(overheads),
+            "rate": rate, "p_drop": p_drop, "recovery": recovery}
+
+
+def dropout_study(data, overheads, p_drop=0.3, coverage=4, data_bytes=16,
+                  block_records=64, base=codec, trials=8, seed=0):
+    """RS vs fountain recovery vs redundancy at high whole-oligo dropout.
+
+    Uses a large K forced into multiple RS blocks (`block_records` < K), the regime
+    where RS's per-block erasure budget is fragile to uneven dropout while a fountain
+    code pools droplets globally. Reports whatever it shows, honestly.
+    """
+    K = max(1, -(-len(data) // data_bytes))
+    out = {"overheads": list(overheads), "p_drop": p_drop, "coverage": coverage,
+           "k": K, "block_records": block_records}
+    for name, layer in (("RS", ecc), ("fountain", fountain)):
+        recs = []
+        for ov in overheads:
+            enc = _enc_kwargs(layer, ov, K, data_bytes, block_records)
+            recs.append(_family_recovery(data, 0.0, trials, seed, base, layer, enc,
+                                         coverage, p_drop=p_drop))
+        out[name] = recs
+    return out
+
+
 def default_family_comparison():
     """The standard cross-family run, single source for the JSON and the figure."""
     data = bytes(range(256)) * 2  # 512 bytes
     rates = [0.0, 0.005, 0.01, 0.02, 0.05, 0.1]
     return compare_families(data, rates, overhead=1.0, coverage=8, trials=8,
                             data_bytes=16)
+
+
+def default_cost_study():
+    """The standard S4 run: the coverage x redundancy grid (for the frontier-winning
+    screening+RS family) and the large-K dropout RS-vs-fountain study. Single source
+    for the JSON and the figures."""
+    grid = cost_grid(bytes(range(256)) * 2, rate=0.02, coverages=[1, 2, 4, 8, 16],
+                     overheads=[0.25, 0.5, 1.0, 2.0], base=screen_codec,
+                     trials=8, data_bytes=16)
+    big = bytes((i * 131 + 7) % 256 for i in range(3000))  # K ~ 188, multi-block RS
+    drop = dropout_study(big, overheads=[0.25, 0.5, 0.75, 1.0, 1.5], p_drop=0.3,
+                         coverage=1, block_records=64, trials=6)
+    return {"grid": grid, "dropout": drop}
 
 
 def main(smoke=False):
@@ -246,6 +315,17 @@ def main(smoke=False):
             print(f"  {name:20s} density={d['bits_per_nt']:.3f} bits/nt   "
                   f"full-recovery threshold={d['threshold']:.3f}")
         print(f"wrote   : {os.path.normpath(fam_path)}")
+
+        cost = default_cost_study()  # S4 cost study
+        cost_path = os.path.join(RESULTS_DIR, "cost_study.json")
+        with open(cost_path, "w") as f:
+            json.dump(cost, f, indent=2)
+        dr = cost["dropout"]
+        print(f"\ndropout study (K={dr['k']}, blocks {dr['block_records']}, "
+              f"p_drop {dr['p_drop']}, overheads {dr['overheads']}):")
+        print(f"  RS       {['%.2f' % v for v in dr['RS']]}")
+        print(f"  fountain {['%.2f' % v for v in dr['fountain']]}")
+        print(f"wrote   : {os.path.normpath(cost_path)}")
 
 
 if __name__ == "__main__":

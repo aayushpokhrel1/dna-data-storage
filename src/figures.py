@@ -123,9 +123,62 @@ def fig_pareto():
     return _save(fig, "pareto.png")
 
 
+def fig_cost(cost=None):
+    """Recovery over the coverage x redundancy grid, with the iso-recovery frontier."""
+    cost = cost or benchmark.default_cost_study()
+    g = cost["grid"]
+    rec = g["recovery"]
+    covs, ovs = g["coverages"], g["overheads"]
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(rec, origin="lower", aspect="auto", cmap="viridis",
+                   vmin=0, vmax=1)
+    ax.set_xticks(range(len(ovs)), [f"{o:g}x" for o in ovs])
+    ax.set_yticks(range(len(covs)), [str(c) for c in covs])
+    ax.set_xlabel("redundancy (parity overhead)")
+    ax.set_ylabel("sequencing coverage (reads/oligo)")
+    ax.set_title(f"Recovery over the cost grid (screening+RS, rate {g['rate']:g})")
+    for i in range(len(covs)):
+        for j in range(len(ovs)):
+            ax.text(j, i, f"{rec[i][j]:.2f}", ha="center", va="center",
+                    color="white" if rec[i][j] < 0.6 else "black", fontsize=9)
+    # iso-recovery frontier: first full-recovery redundancy at each coverage
+    fx, fy = [], []
+    for i, row in enumerate(rec):
+        for j, v in enumerate(row):
+            if v >= 1.0:
+                fx.append(j); fy.append(i); break
+    if fx:
+        ax.plot(fx, fy, color="red", marker="o", linewidth=2,
+                label="cheapest full-recovery budget")
+        ax.legend(loc="upper right")
+    fig.colorbar(im, ax=ax, label="fraction recovered")
+    return _save(fig, "cost_grid.png")
+
+
+def fig_dropout(cost=None):
+    """RS vs fountain recovery vs redundancy at high whole-oligo dropout."""
+    cost = cost or benchmark.default_cost_study()
+    d = cost["dropout"]
+
+    fig, ax = plt.subplots()
+    ax.plot(d["overheads"], d["RS"], marker="o", label="Reed-Solomon")
+    ax.plot(d["overheads"], d["fountain"], marker="s", label="fountain (LT)")
+    ax.set_xlabel("redundancy (parity / droplet overhead)")
+    ax.set_ylabel("fraction recovered")
+    ax.set_title(f"RS vs fountain at {int(d['p_drop'] * 100)}% dropout "
+                 f"(K={d['k']}, RS blocks of {d['block_records']})")
+    ax.set_ylim(-0.02, 1.02)
+    ax.legend()
+    ax.grid(alpha=0.3)
+    return _save(fig, "dropout.png")
+
+
 def main():
     """Render all figures and verify each file was written."""
-    paths = [fig_recovery(), fig_density(), fig_constraints(), fig_pareto()]
+    cost = benchmark.default_cost_study()  # compute once, shared by both S4 figures
+    paths = [fig_recovery(), fig_density(), fig_constraints(), fig_pareto(),
+             fig_cost(cost), fig_dropout(cost)]
     for path in paths:
         assert os.path.exists(path), f"missing figure: {path}"
         assert os.path.getsize(path) > 0, f"empty figure: {path}"
