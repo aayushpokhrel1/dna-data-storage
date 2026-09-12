@@ -5,9 +5,12 @@
 > figures (M4). The codec recovers fully through ~1% per-base error (coverage 10),
 > and density rises from 0.70 toward the rotating ceiling (log2 3) as the payload
 > grows. Figures in `results/figures/`, error rates and prior art cited in
-> `paper/references.bib` (verified 2026-09-11). Code in `src/` with 27 passing
-> assertion checks across five `test_*.py` files. Remaining sections are marked
-> **planned**.
+> `paper/references.bib` (verified 2026-09-11). A substance program (S1-S6) is now
+> underway to turn the tool into a research contribution, an open framework comparing
+> codec/ECC families across density, robustness, and cost: the screening codec (S1,
+> `src/screen_codec.py`, ~2 bits/nt with a guaranteed GC window) is done. Code in
+> `src/` with 33 passing assertion checks across six `test_*.py` files. Remaining
+> sections are marked **planned**.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -84,9 +87,12 @@ A runnable, tested codec plus a benchmark, kept honest and measurable:
       Substitutions and indels both reduce to "bad oligo -> erasure". Checks in
       `src/test_ecc.py`. Design:
       `docs/superpowers/specs/2026-09-11-m2-ecc-design.md`.
-- [ ] **M2b - Fountain codec.** Add an LT/fountain codec (Erlich 2017) so the
-      benchmark compares RS-vs-fountain, alongside the rotating-vs-screening codec
-      comparison. Also open: in-place inner correction of small substitutions.
+- [x] **M2b - Screening codec.** Higher-density second codec family in
+      `src/screen_codec.py` (DNA Fountain-style, Erlich 2017): bits pack 2/nt and a
+      per-chunk seed is screened by rejection so the oligo satisfies BOTH a GC window
+      and the homopolymer bound by construction (the GC guarantee the rotating codec
+      lacks). ~2 bits/nt at large payloads. Same indexed, ECC-agnostic interface as
+      the rotating codec. Checks in `src/test_screen_codec.py`.
 - [x] **M3 - Channel and benchmark.** Seeded synthesis/sequencing channel
       (`src/channel.py`: per-base substitution/insertion/deletion, whole-oligo
       dropout, sequencing coverage) and a recovery benchmark (`src/benchmark.py`:
@@ -104,7 +110,26 @@ A runnable, tested codec plus a benchmark, kept honest and measurable:
       distributions (all runs = 1, the M1 guarantee). Plotting delegated to a
       cheap-model worker and reviewed; the density-sweep computation is in-house
       (checked in `src/test_benchmark.py`).
-- [ ] **M5 - Paper draft.** Write the manuscript in `paper/`.
+### Substance program (approved 2026-09-12): turn the tool into a contribution
+
+The core new claim is an open, reproducible framework for comparing constraint-aware
+DNA-storage codecs across the density / robustness / cost trade-off, with random
+access. Kept computational and honest, no "DNA beats silicon".
+
+- [x] **S1 - Screening codec.** See M2b above (`src/screen_codec.py`).
+- [ ] **S2 - Fountain codec.** LT/fountain outer code (Erlich 2017) as a second ECC
+      family, so the benchmark compares RS-vs-fountain.
+- [ ] **S3 - Cross-family benchmark + Pareto.** One harness over {rotating, screening}
+      x {RS, fountain}; report the density-robustness Pareto frontier.
+- [ ] **S4 - Coverage/parity cost study.** Pareto-optimal (coverage x redundancy)
+      budget for a target recovery at a given error rate.
+- [ ] **S5 - Random-access demo.** Retrieve one file from a mixed pool of many;
+      measure reads needed. Realizes the addressable-oligo design.
+- [ ] **S6 - Indel-correcting inner code.** Marker/watermark code that corrects
+      insertions/deletions in place instead of discarding oligos (the stretch novelty).
+
+- [ ] **M5 - Paper draft.** Write the manuscript in `paper/`, covering the framework,
+      the codec/ECC families, the comparison, random access, and the cost study.
 - [ ] **M6 - Preprint.**
 
 ## Repository layout
