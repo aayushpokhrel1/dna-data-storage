@@ -100,6 +100,28 @@ def recovery_at_rate(data, rate, trials, seed, ratio=(1, 1, 1), coverage=1, **ec
     return ok / trials if trials else 0.0
 
 
+def density_sweep(payload_sizes, n_data_records=32, parity_records=4,
+                  index_trits=20, seed="A"):
+    """Density vs `payload_bytes`, with the data-record count held fixed.
+
+    Fixing `n_data_records` (and putting them in one block) keeps the parity
+    fraction constant, so the trend isolates how per-oligo overhead (the index and
+    the CRC) amortizes as the payload grows: bits/nt rises toward the rotating
+    ceiling (log2 3 ~ 1.585) scaled by the code rate. Payload is deterministic.
+    """
+    out = {"payload_bytes": [], "bits_per_nt": [], "code_rate": []}
+    for pb in payload_sizes:
+        data = bytes((i * 7 + 1) % 256 for i in range(pb * n_data_records))
+        oligos, meta = ecc.encode(data, data_bytes=pb, parity_records=parity_records,
+                                  block_records=n_data_records, index_trits=index_trits,
+                                  seed=seed)
+        cr = code_rate(len(data), oligos, meta)
+        out["payload_bytes"].append(pb)
+        out["bits_per_nt"].append(cr["bits_per_nt"])
+        out["code_rate"].append(cr["code_rate"])
+    return out
+
+
 def sweep(data, rates, trials, seed, **kwargs):
     """Run `recovery_at_rate` over `rates`; return aligned rate/recovery lists."""
     recovery = [recovery_at_rate(data, r, trials, seed, **kwargs) for r in rates]

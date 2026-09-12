@@ -44,6 +44,17 @@ def test_sweep_shape():
     assert res["recovery"][0] == 1.0
 
 
+def test_density_sweep_rises_toward_ceiling():
+    import math
+    sweep = benchmark.density_sweep([8, 16, 32, 64, 128], n_data_records=32,
+                                    parity_records=4)
+    bpn = sweep["bits_per_nt"]
+    ceiling = math.log2(3)  # rotating code payload ceiling ~1.585 bits/nt
+    assert bpn == sorted(bpn), f"density must rise with payload_bytes, got {bpn}"
+    assert all(0 < b < ceiling for b in bpn), f"density out of (0, log2 3): {bpn}"
+    assert bpn[-1] > bpn[0], "large payload must amortize index/CRC overhead"
+
+
 def test_code_rate_keys():
     oligos, meta = ecc.encode(DATA, data_bytes=8, parity_records=4)
     cr = benchmark.code_rate(len(DATA), oligos, meta)

@@ -1,12 +1,13 @@
 # DNA Data Storage: A Constraint-Aware Codec with Error Correction
 
-> **Status: M3 done.** Constraint-aware rotating codec (M1), Reed-Solomon error
-> correction (M2), and a seeded synthesis/sequencing channel + recovery benchmark
-> (M3). With coverage 10 the codec recovers fully through ~1% per-base error, ~0.85
-> at 2%, failing by 5% (`results/benchmark.json`). Error rates and prior art are
-> cited in `paper/references.bib` (verified 2026-09-11). Code in `src/` with 26
-> passing assertion checks across five `test_*.py` files. Later sections are marked
-> **planned** so it is always clear what exists and what does not.
+> **Status: M4 done.** Constraint-aware rotating codec (M1), Reed-Solomon error
+> correction (M2), a seeded channel + recovery benchmark (M3), and publication
+> figures (M4). The codec recovers fully through ~1% per-base error (coverage 10),
+> and density rises from 0.70 toward the rotating ceiling (log2 3) as the payload
+> grows. Figures in `results/figures/`, error rates and prior art cited in
+> `paper/references.bib` (verified 2026-09-11). Code in `src/` with 27 passing
+> assertion checks across five `test_*.py` files. Remaining sections are marked
+> **planned**.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -95,8 +96,14 @@ A runnable, tested codec plus a benchmark, kept honest and measurable:
       sources); `src/check_citations.py` guards citation integrity. Checks in
       `src/test_channel.py` and `src/test_benchmark.py`. Design:
       `docs/superpowers/specs/2026-09-11-m3-channel-benchmark-design.md`.
-- [ ] **M4 - Figures.** Recovery curves, density and overhead, constraint
-      distributions.
+- [x] **M4 - Figures.** `src/figures.py` -> `results/figures/`: recovery vs error
+      rate (one line per sequencing coverage, showing coverage as the recovery
+      lever), information density vs payload size (against the log2 3 rotating
+      ceiling, from `benchmark.density_sweep` with the data-record count held fixed
+      so the parity fraction stays constant), and per-oligo GC + homopolymer-run
+      distributions (all runs = 1, the M1 guarantee). Plotting delegated to a
+      cheap-model worker and reviewed; the density-sweep computation is in-house
+      (checked in `src/test_benchmark.py`).
 - [ ] **M5 - Paper draft.** Write the manuscript in `paper/`.
 - [ ] **M6 - Preprint.**
 
