@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import benchmark
 import constraints
 import ecc
+import pool
 
 FIGURES_DIR = os.path.join(os.path.dirname(__file__), os.pardir, "results", "figures")
 
@@ -174,11 +175,34 @@ def fig_dropout(cost=None):
     return _save(fig, "dropout.png")
 
 
+def fig_random_access():
+    """Per-file retrieval cost stays flat as the archive grows (S5)."""
+    file_bytes = 320
+    ms = [2, 4, 8, 16]
+    touched, pool_sizes = [], []
+    for m in ms:
+        files = {i: bytes((i * 41 + j) % 256 for j in range(file_bytes))
+                 for i in range(1, m + 1)}
+        p, meta = pool.write_pool(files, data_bytes=16, parity_records=8)
+        touched.append(len(pool.select(p, 1, meta)))
+        pool_sizes.append(len(p))
+
+    fig, ax = plt.subplots()
+    ax.plot(ms, pool_sizes, marker="s", label="whole-pool decode (all oligos)")
+    ax.plot(ms, touched, marker="o", label="random access (one file)")
+    ax.set_xlabel("files in the pool")
+    ax.set_ylabel("oligos read to retrieve one file")
+    ax.set_title("Random access reads one file's worth, whatever the archive size")
+    ax.legend()
+    ax.grid(alpha=0.3)
+    return _save(fig, "random_access.png")
+
+
 def main():
     """Render all figures and verify each file was written."""
     cost = benchmark.default_cost_study()  # compute once, shared by both S4 figures
     paths = [fig_recovery(), fig_density(), fig_constraints(), fig_pareto(),
-             fig_cost(cost), fig_dropout(cost)]
+             fig_cost(cost), fig_dropout(cost), fig_random_access()]
     for path in paths:
         assert os.path.exists(path), f"missing figure: {path}"
         assert os.path.getsize(path) > 0, f"empty figure: {path}"

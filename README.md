@@ -10,11 +10,11 @@
 > codec/ECC families across density, robustness, and cost: the screening codec (S1,
 > `src/screen_codec.py`, ~2 bits/nt with a guaranteed GC window) and the fountain
 > codec (S2, `src/fountain.py`), and the cross-family benchmark + density-robustness
-> Pareto frontier (S3), and the coverage/parity cost study (S4) are done; screening+RS
-> dominates the density-robustness frontier, and RS matches or beats fountain at fixed
-> redundancy (fountain's edge is ratelessness, not fixed-N erasure efficiency). Code
-> in `src/` with 42 passing assertion checks across seven `test_*.py` files. Remaining
-> sections are marked **planned**.
+> Pareto frontier (S3), the coverage/parity cost study (S4), and random access (S5) are done; screening+RS
+> dominates the density-robustness frontier, RS matches or beats fountain at fixed
+> redundancy (fountain's edge is ratelessness), and per-file retrieval is O(1) in the
+> archive size. Code in `src/` with 46 passing assertion checks across eight
+> `test_*.py` files. Remaining sections are marked **planned**.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -147,8 +147,14 @@ access. Kept computational and honest, no "DNA beats silicon".
       fountain's real value is ratelessness (droplets on demand), which a fixed-N
       benchmark does not reward. Data in `results/cost_study.json`. Checks in
       `src/test_benchmark.py`.
-- [ ] **S5 - Random-access demo.** Retrieve one file from a mixed pool of many;
-      measure reads needed. Realizes the addressable-oligo design.
+- [x] **S5 - Random-access demo.** `src/pool.py` stores many files in one shuffled,
+      barcoded oligo pool; retrieving a file filters the pool by its file-id barcode
+      and decodes only that subset, reusing any base codec + ECC layer. Barcode
+      errors just drop an oligo from its file (the ECC recovers it). Per-file
+      retrieval reads one file's worth of oligos regardless of archive size (O(1) vs
+      the O(M) whole-pool decode): `results/figures/random_access.png`. Checks in
+      `src/test_pool.py` (roundtrip, subset-only access, cross-file isolation,
+      recovery under channel).
 - [ ] **S6 - Indel-correcting inner code.** Marker/watermark code that corrects
       insertions/deletions in place instead of discarding oligos (the stretch novelty).
 
