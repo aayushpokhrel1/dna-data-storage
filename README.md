@@ -8,9 +8,10 @@
 > `paper/references.bib` (verified 2026-09-11). A substance program (S1-S6) is now
 > underway to turn the tool into a research contribution, an open framework comparing
 > codec/ECC families across density, robustness, and cost: the screening codec (S1,
-> `src/screen_codec.py`, ~2 bits/nt with a guaranteed GC window) is done. Code in
-> `src/` with 33 passing assertion checks across six `test_*.py` files. Remaining
-> sections are marked **planned**.
+> `src/screen_codec.py`, ~2 bits/nt with a guaranteed GC window) and the fountain
+> codec (S2, `src/fountain.py`, rateless LT erasure code) are done. Code in `src/`
+> with 38 passing assertion checks across seven `test_*.py` files. Remaining sections
+> are marked **planned**.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -117,8 +118,12 @@ DNA-storage codecs across the density / robustness / cost trade-off, with random
 access. Kept computational and honest, no "DNA beats silicon".
 
 - [x] **S1 - Screening codec.** See M2b above (`src/screen_codec.py`).
-- [ ] **S2 - Fountain codec.** LT/fountain outer code (Erlich 2017) as a second ECC
-      family, so the benchmark compares RS-vs-fountain.
+- [x] **S2 - Fountain codec.** LT/fountain outer code in `src/fountain.py` (Erlich
+      2017): data split into K segments, N>K droplets each XOR a Robust-Soliton subset
+      seeded by the droplet number (= codec index), per-droplet CRC discards corrupt
+      droplets, peeling decoder reconstructs. Dropouts and corruptions are both just
+      missing droplets. Same `encode/decode` interface as `ecc.py`. Checks in
+      `src/test_fountain.py`.
 - [ ] **S3 - Cross-family benchmark + Pareto.** One harness over {rotating, screening}
       x {RS, fountain}; report the density-robustness Pareto frontier.
 - [ ] **S4 - Coverage/parity cost study.** Pareto-optimal (coverage x redundancy)
