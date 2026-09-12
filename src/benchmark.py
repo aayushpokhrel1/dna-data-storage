@@ -18,8 +18,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 import channel
+import codec
 import constraints
 import ecc
+import fountain
+import screen_codec
 from reedsolo import ReedSolomonError
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), os.pardir, "results")
@@ -100,8 +103,7 @@ def recovery_at_rate(data, rate, trials, seed, ratio=(1, 1, 1), coverage=1, **ec
     return ok / trials if trials else 0.0
 
 
-def density_sweep(payload_sizes, n_data_records=32, parity_records=4,
-                  index_trits=20, seed="A"):
+def density_sweep(payload_sizes, n_data_records=32, parity_records=4):
     """Density vs `payload_bytes`, with the data-record count held fixed.
 
     Fixing `n_data_records` (and putting them in one block) keeps the parity
@@ -113,8 +115,7 @@ def density_sweep(payload_sizes, n_data_records=32, parity_records=4,
     for pb in payload_sizes:
         data = bytes((i * 7 + 1) % 256 for i in range(pb * n_data_records))
         oligos, meta = ecc.encode(data, data_bytes=pb, parity_records=parity_records,
-                                  block_records=n_data_records, index_trits=index_trits,
-                                  seed=seed)
+                                  block_records=n_data_records)
         cr = code_rate(len(data), oligos, meta)
         out["payload_bytes"].append(pb)
         out["bits_per_nt"].append(cr["bits_per_nt"])
@@ -127,6 +128,65 @@ def sweep(data, rates, trials, seed, **kwargs):
     recovery = [recovery_at_rate(data, r, trials, seed, **kwargs) for r in rates]
     config = {"trials": trials, "seed": seed, **kwargs}
     return {"rates": list(rates), "recovery": recovery, "config": config}
+
+
+def _family_recovery(data, rate, trials, seed, base, layer, enc_kwargs,
+                     coverage, ratio=LIT_RATIO):
+    """Fraction of trials that a given (base codec, ECC layer) family recovers."""
+    total = sum(ratio)
+    p_sub, p_ins, p_del = (rate * r / total for r in ratio)
+    oligos, meta = layer.encode(data, base=base, **enc_kwargs)
+    ok = 0
+    for t in range(trials):
+        reads = channel.corrupt(oligos, p_sub=p_sub, p_ins=p_ins, p_del=p_del,
+                                coverage=coverage, seed=seed + t)
+        try:
+            if layer.decode(reads, meta, base=base) == data:
+                ok += 1
+        except (ecc.RecoveryError, fountain.RecoveryError, ReedSolomonError):
+            pass
+    return ok / trials if trials else 0.0
+
+
+def compare_families(data, rates, overhead=1.0, coverage=6, trials=8,
+                     data_bytes=16, seed=0):
+    """Density and recovery for all four {base codec} x {ECC layer} families,
+    at a matched redundancy (`overhead`) and coverage. This is the cross-family
+    comparison the paper's Pareto frontier is built from.
+
+    `overhead` is the extra fraction of records: RS parity_records = overhead * K,
+    fountain droplets = (1 + overhead) * K, so both families carry the same
+    redundancy and only the codec/ECC family differs.
+    """
+    K = max(1, -(-len(data) // data_bytes))
+    parity = max(1, round(K * overhead))
+    rs = dict(data_bytes=data_bytes, parity_records=parity, block_records=K)
+    ft = dict(data_bytes=data_bytes, overhead=overhead)
+    families = {
+        "rotating+RS": (codec, ecc, rs),
+        "rotating+fountain": (codec, fountain, ft),
+        "screening+RS": (screen_codec, ecc, rs),
+        "screening+fountain": (screen_codec, fountain, ft),
+    }
+    out = {}
+    for name, (base, layer, enc) in families.items():
+        oligos, _ = layer.encode(data, base=base, **enc)
+        bits_per_nt = len(data) * 8 / sum(len(o) for o in oligos)
+        recovery = [_family_recovery(data, r, trials, seed, base, layer, enc, coverage)
+                    for r in rates]
+        threshold = max([r for r, v in zip(rates, recovery) if v >= 1.0], default=0.0)
+        out[name] = {"bits_per_nt": bits_per_nt, "recovery": recovery,
+                     "threshold": threshold}
+    return {"rates": list(rates), "overhead": overhead, "coverage": coverage,
+            "families": out}
+
+
+def default_family_comparison():
+    """The standard cross-family run, single source for the JSON and the figure."""
+    data = bytes(range(256)) * 2  # 512 bytes
+    rates = [0.0, 0.005, 0.01, 0.02, 0.05, 0.1]
+    return compare_families(data, rates, overhead=1.0, coverage=8, trials=8,
+                            data_bytes=16)
 
 
 def main(smoke=False):
@@ -174,6 +234,18 @@ def main(smoke=False):
     for r, rec in zip(result["rates"], result["recovery"]):
         print(f"  rate {r:.3f} -> recovery {rec:.2f}")
     print(f"wrote   : {os.path.normpath(RESULTS_PATH)}")
+
+    if not smoke:  # cross-family comparison (S3)
+        fam = default_family_comparison()
+        fam_path = os.path.join(RESULTS_DIR, "family_comparison.json")
+        with open(fam_path, "w") as f:
+            json.dump(fam, f, indent=2)
+        print("\ncross-family (overhead {:.1f}x, coverage {}):".format(
+            fam["overhead"], fam["coverage"]))
+        for name, d in fam["families"].items():
+            print(f"  {name:20s} density={d['bits_per_nt']:.3f} bits/nt   "
+                  f"full-recovery threshold={d['threshold']:.3f}")
+        print(f"wrote   : {os.path.normpath(fam_path)}")
 
 
 if __name__ == "__main__":

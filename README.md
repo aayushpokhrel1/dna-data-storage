@@ -9,9 +9,10 @@
 > underway to turn the tool into a research contribution, an open framework comparing
 > codec/ECC families across density, robustness, and cost: the screening codec (S1,
 > `src/screen_codec.py`, ~2 bits/nt with a guaranteed GC window) and the fountain
-> codec (S2, `src/fountain.py`, rateless LT erasure code) are done. Code in `src/`
-> with 38 passing assertion checks across seven `test_*.py` files. Remaining sections
-> are marked **planned**.
+> codec (S2, `src/fountain.py`), and the cross-family benchmark + density-robustness
+> Pareto frontier (S3) are done; screening+RS dominates the frontier at the tested
+> operating point. Code in `src/` with 41 passing assertion checks across seven
+> `test_*.py` files. Remaining sections are marked **planned**.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -124,8 +125,15 @@ access. Kept computational and honest, no "DNA beats silicon".
       droplets, peeling decoder reconstructs. Dropouts and corruptions are both just
       missing droplets. Same `encode/decode` interface as `ecc.py`. Checks in
       `src/test_fountain.py`.
-- [ ] **S3 - Cross-family benchmark + Pareto.** One harness over {rotating, screening}
-      x {RS, fountain}; report the density-robustness Pareto frontier.
+- [x] **S3 - Cross-family benchmark + Pareto.** ECC layers made codec-pluggable
+      (`ecc`/`fountain` take a `base` codec); `benchmark.compare_families` sweeps all
+      {rotating, screening} x {RS, fountain} at matched redundancy and coverage ->
+      `results/family_comparison.json`, and `figures.fig_pareto` plots density vs
+      robustness (`results/figures/pareto.png`). Finding: screening lifts density
+      (~0.53 -> 0.64 bits/nt at 1x overhead) and screening+RS dominates the frontier
+      here; fountain trails RS at this small block size (its edge is large,
+      dropout-heavy pools). Checks in `src/test_crossfamily.py` and
+      `src/test_benchmark.py`.
 - [ ] **S4 - Coverage/parity cost study.** Pareto-optimal (coverage x redundancy)
       budget for a target recovery at a given error rate.
 - [ ] **S5 - Random-access demo.** Retrieve one file from a mixed pool of many;

@@ -36,11 +36,13 @@ def _crc(index, data):
 
 
 def encode(data, data_bytes=8, inner_parity=None, parity_records=4,
-           block_records=64, index_trits=20, seed=codec.SEED_BASE):
+           block_records=64, base=codec):
     """Encode bytes into error-corrected DNA oligos plus out-of-band meta.
 
-    inner_parity is accepted for interface symmetry but unused: detection is a
-    fixed 4-byte CRC per record.
+    `base` is the base codec module that maps records to oligos (rotating `codec`
+    or `screen_codec`); it must expose `encode(data, payload_bytes)` and
+    `decode_one(oligo, meta)`. inner_parity is accepted for interface symmetry but
+    unused: detection is a fixed 4-byte CRC per record.
     """
     D, P = data_bytes, parity_records
     if block_records + P > RS_MAX:
@@ -72,8 +74,7 @@ def encode(data, data_bytes=8, inner_parity=None, parity_records=4,
 
     record_len = D + CRC_BYTES
     blob = b"".join(framed)
-    oligos, cmeta = codec.encode(blob, payload_bytes=record_len,
-                                 index_trits=index_trits, seed=seed)
+    oligos, cmeta = base.encode(blob, payload_bytes=record_len)
     meta = {
         **cmeta,
         "ecc": {
@@ -87,8 +88,11 @@ def encode(data, data_bytes=8, inner_parity=None, parity_records=4,
     return oligos, meta
 
 
-def decode(oligos, meta):
-    """Recover the original bytes from oligos (any order, with erasures)."""
+def decode(oligos, meta, base=codec):
+    """Recover the original bytes from oligos (any order, with erasures).
+
+    `base` must be the same base codec used to encode.
+    """
     e = meta["ecc"]
     D, P = e["data_bytes"], e["parity_records"]
     outer = RSCodec(P)
@@ -99,7 +103,7 @@ def decode(oligos, meta):
     # does not cost an erasure.
     good = {}
     for oligo in oligos:
-        idx, framed = codec.decode_one(oligo, meta)
+        idx, framed = base.decode_one(oligo, meta)
         if idx in good:
             continue
         rec, crc = framed[:D], framed[D:D + CRC_BYTES]

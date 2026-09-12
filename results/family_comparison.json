@@ -1,0 +1,62 @@
+{
+  "rates": [
+    0.0,
+    0.005,
+    0.01,
+    0.02,
+    0.05,
+    0.1
+  ],
+  "overhead": 1.0,
+  "coverage": 8,
+  "families": {
+    "rotating+RS": {
+      "bits_per_nt": 0.5289256198347108,
+      "recovery": [
+        1.0,
+        1.0,
+        1.0,
+        0.875,
+        0.0,
+        0.0
+      ],
+      "threshold": 0.01
+    },
+    "rotating+fountain": {
+      "bits_per_nt": 0.5289256198347108,
+      "recovery": [
+        1.0,
+        1.0,
+        1.0,
+        0.375,
+        0.0,
+        0.0
+      ],
+      "threshold": 0.01
+    },
+    "screening+RS": {
+      "bits_per_nt": 0.64,
+      "recovery": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "threshold": 0.02
+    },
+    "screening+fountain": {
+      "bits_per_nt": 0.64,
+      "recovery": [
+        1.0,
+        1.0,
+        1.0,
+        0.75,
+        0.0,
+        0.0
+      ],
+      "threshold": 0.01
+    }
+  }
+}

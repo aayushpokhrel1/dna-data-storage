@@ -55,6 +55,20 @@ def test_density_sweep_rises_toward_ceiling():
     assert bpn[-1] > bpn[0], "large payload must amortize index/CRC overhead"
 
 
+def test_compare_families_reports_all_four():
+    data = bytes(range(256))
+    res = benchmark.compare_families(data, [0.0, 0.02], overhead=1.0, coverage=6, trials=3)
+    fam = res["families"]
+    assert set(fam) == {"rotating+RS", "rotating+fountain",
+                        "screening+RS", "screening+fountain"}
+    for name, d in fam.items():
+        assert d["bits_per_nt"] > 0, name
+        assert len(d["recovery"]) == 2, name
+        assert d["recovery"][0] == 1.0, f"{name} must recover at rate 0"
+    # screening packs 2 bits/nt vs rotating's ~1.58, at the same ECC
+    assert fam["screening+RS"]["bits_per_nt"] > fam["rotating+RS"]["bits_per_nt"]
+
+
 def test_code_rate_keys():
     oligos, meta = ecc.encode(DATA, data_bytes=8, parity_records=4)
     cr = benchmark.code_rate(len(DATA), oligos, meta)

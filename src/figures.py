@@ -101,9 +101,31 @@ def fig_constraints():
     return _save(fig, "constraints.png")
 
 
+def fig_pareto():
+    """Density vs robustness for the four codec x ECC families (S3 Pareto)."""
+    res = benchmark.default_family_comparison()
+    fam = res["families"]
+
+    fig, ax = plt.subplots()
+    # distinct marker per family so families that coincide at this operating point
+    # (identical density and threshold) stay individually visible via the legend.
+    markers = ["o", "s", "^", "D"]
+    for (name, d), m in zip(fam.items(), markers):
+        ax.scatter(d["bits_per_nt"], d["threshold"], s=110, marker=m,
+                   edgecolor="black", linewidth=0.5, alpha=0.8, label=name)
+    ax.set_xlabel("density (bits/nt)")
+    ax.set_ylabel("robustness: max per-base rate at full recovery")
+    ax.set_title(f"Density vs robustness by family "
+                 f"(overhead {res['overhead']:.0f}x, coverage {res['coverage']})")
+    ax.grid(alpha=0.3)
+    ax.margins(0.3)
+    ax.legend(title="base codec + ECC", loc="best")
+    return _save(fig, "pareto.png")
+
+
 def main():
-    """Render all three figures and verify each file was written."""
-    paths = [fig_recovery(), fig_density(), fig_constraints()]
+    """Render all figures and verify each file was written."""
+    paths = [fig_recovery(), fig_density(), fig_constraints(), fig_pareto()]
     for path in paths:
         assert os.path.exists(path), f"missing figure: {path}"
         assert os.path.getsize(path) > 0, f"empty figure: {path}"

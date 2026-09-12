@@ -103,12 +103,20 @@ def _seed_bytes(seed, seed_bases):
 
 
 def decode_one(oligo, meta):
-    """Decode one oligo to (index, payload_bytes)."""
+    """Decode one oligo to (index, payload_bytes).
+
+    Length-tolerant: a channel read may be shortened or lengthened by indels, so
+    the seed region is padded to width and the body truncated to a whole number of
+    bases. A malformed read still yields a record, which the caller's CRC rejects.
+    """
     sb = meta["seed_bases"]
-    seed = int.from_bytes(_unpack(oligo[:sb]), "big")
-    record = _scramble(_unpack(oligo[sb:]), seed)
+    seed_region = (oligo[:sb] + "A" * sb)[:sb]
+    body = oligo[sb:]
+    body = body[: (len(body) // 4) * 4]
+    seed = int.from_bytes(_unpack(seed_region), "big")
+    record = _scramble(_unpack(body), seed)
     ib = meta["index_bytes"]
-    idx = int.from_bytes(record[:ib], "big")
+    idx = int.from_bytes(record[:ib], "big") if len(record) >= ib else 0
     return idx, record[ib:ib + meta["payload_bytes"]]
 
 

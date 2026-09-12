@@ -68,9 +68,13 @@ def _segments_for(seed, K, cum):
     return rng.sample(range(K), degree)
 
 
-def encode(data, data_bytes=16, overhead=0.5, c=0.1, delta=0.5,
-           index_trits=20, seed=codec.SEED_BASE):
-    """Encode bytes into fountain droplets (DNA oligos) plus out-of-band meta."""
+def encode(data, data_bytes=16, overhead=0.5, c=0.1, delta=0.5, base=codec):
+    """Encode bytes into fountain droplets (DNA oligos) plus out-of-band meta.
+
+    `base` is the base codec module (rotating `codec` or `screen_codec`) that maps
+    droplet records to oligos; it must expose `encode(data, payload_bytes)` and
+    `decode_one(oligo, meta)`.
+    """
     D = data_bytes
     total_len = len(data)
     padded = data + b"\x00" * ((-len(data)) % D) if data else b""
@@ -81,8 +85,7 @@ def encode(data, data_bytes=16, overhead=0.5, c=0.1, delta=0.5,
         "total_len": total_len, "record_len": D + CRC_BYTES,
     }
     if K == 0:
-        oligos, cmeta = codec.encode(b"", payload_bytes=D + CRC_BYTES,
-                                     index_trits=index_trits, seed=seed)
+        oligos, cmeta = base.encode(b"", payload_bytes=D + CRC_BYTES)
         return oligos, {**cmeta, **meta}
 
     n_droplets = K + max(1, math.ceil(K * overhead))
@@ -97,13 +100,15 @@ def encode(data, data_bytes=16, overhead=0.5, c=0.1, delta=0.5,
         records.append(bytes(payload) + _crc(i, bytes(payload)).to_bytes(CRC_BYTES, "big"))
 
     blob = b"".join(records)
-    oligos, cmeta = codec.encode(blob, payload_bytes=D + CRC_BYTES,
-                                 index_trits=index_trits, seed=seed)
+    oligos, cmeta = base.encode(blob, payload_bytes=D + CRC_BYTES)
     return oligos, {**cmeta, **meta, "n_droplets": n_droplets}
 
 
-def decode(oligos, meta):
-    """Recover the original bytes by peeling the surviving droplets."""
+def decode(oligos, meta, base=codec):
+    """Recover the original bytes by peeling the surviving droplets.
+
+    `base` must be the same base codec used to encode.
+    """
     D, K = meta["data_bytes"], meta["k"]
     if K == 0:
         return b""
@@ -112,7 +117,7 @@ def decode(oligos, meta):
     # Collect CRC-valid droplets as [segment set, payload]; dedupe by seed.
     droplets, seen = [], set()
     for oligo in oligos:
-        i, framed = codec.decode_one(oligo, meta)
+        i, framed = base.decode_one(oligo, meta)
         if i in seen or i >= meta.get("n_droplets", i + 1):
             continue
         payload, crc = framed[:D], framed[D:D + CRC_BYTES]
