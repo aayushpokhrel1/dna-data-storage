@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import codec
 import ecc
 
-CFG = dict(data_bytes=8, inner_parity=4, parity_records=4, block_records=64)
+CFG = dict(data_bytes=8, parity_records=4, block_records=64)
 
 
 def _garble(oligo):

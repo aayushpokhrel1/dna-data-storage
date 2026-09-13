@@ -93,7 +93,11 @@ def encode(data, payload_bytes=16, index_bytes=3, seed_bases=8,
                 oligos.append(oligo)
                 break
         else:
-            raise ScreenError(f"no valid seed < {max_seed} for chunk {idx}")
+            raise ScreenError(
+                f"no constraint-satisfying seed < {max_seed} for chunk {idx}. "
+                f"Rejection sampling gets exponentially harder as the oligo grows: "
+                f"keep records to a realistic oligo length (payload_bytes ~24-48, "
+                f"~130-230 nt), widen gc_range/max_run, or raise max_seed.")
     return oligos, meta
 
 

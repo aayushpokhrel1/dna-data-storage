@@ -38,7 +38,7 @@ first two projects. It does not reuse the paper-1 solver.
 - Paper 2: `aayushpokhrel1/dna-vs-silicon-memory` (molecular-electronic memory).
 - Paper 3 (this repo): DNA data storage codec. Separate field, separate repo.
 
-## Contribution (planned)
+## Contribution
 
 A runnable, tested codec plus a benchmark, kept honest and measurable:
 
@@ -52,7 +52,7 @@ A runnable, tested codec plus a benchmark, kept honest and measurable:
    configurable rates, run data through encode, corrupt, decode, and report the
    metrics below.
 
-## Metrics (planned)
+## Metrics
 
 - **Information density:** bits stored per nucleotide (theoretical maximum is 2;
   constraints and error-correction overhead reduce it).
@@ -170,18 +170,66 @@ access. Kept computational and honest, no "DNA beats silicon".
       the codec/ECC families, the comparison, random access, and the cost study.
 - [ ] **M6 - Preprint.**
 
+## Reproducibility
+
+Pure Python, standard library plus `numpy`, `matplotlib`, and `reedsolo`.
+
+```bash
+python -m venv .venv
+# activate, then:
+pip install -r requirements.txt
+```
+
+Run the tests (assert-based self-checks, no framework):
+
+```bash
+for t in src/test_*.py; do python "$t"; done
+```
+
+Run the benchmark (recovery sweep, cross-family comparison, cost study) and write
+the JSON results:
+
+```bash
+python src/benchmark.py            # writes results/*.json
+python src/benchmark.py --smoke    # fast subset
+```
+
+Regenerate every figure from the measured numbers:
+
+```bash
+python src/figures.py              # writes results/figures/*.png
+```
+
+Check citation integrity (bib fields present, every `\cite` defined once a draft
+exists):
+
+```bash
+python src/check_citations.py
+```
+
 ## Repository layout
 
 ```
 dna-data-storage/
-├── README.md          # this file
-├── LICENSE            # MIT (code)
-├── LICENSE-paper      # CC-BY 4.0 (paper text and figures)
-├── requirements.txt   # Python dependencies
-├── src/               # codec, channel, and benchmark code
-├── data/              # small or synthetic inputs (large data is gitignored)
-├── results/           # figures and metrics
-└── paper/             # LaTeX draft
+├── README.md
+├── LICENSE / LICENSE-paper   # MIT (code), CC-BY 4.0 (paper)
+├── requirements.txt
+├── src/
+│   ├── constraints.py        # GC / homopolymer / motif measurement
+│   ├── codec.py              # rotating base codec (homopolymer run = 1)
+│   ├── screen_codec.py       # screening base codec (2 bits/nt, GC window)
+│   ├── ecc.py                # Reed-Solomon detect-and-erase ECC layer
+│   ├── fountain.py           # LT/fountain ECC layer
+│   ├── markercode.py         # marker resync inner code (indels)
+│   ├── channel.py            # synthesis/sequencing error channel
+│   ├── pool.py               # random access over a mixed file pool
+│   ├── benchmark.py          # metrics, sweeps, cross-family + cost studies
+│   ├── figures.py            # publication figures
+│   ├── check_citations.py    # citation integrity
+│   └── test_*.py             # per-module self-checks
+├── data/                     # small or synthetic inputs (large data gitignored)
+├── results/                  # metrics JSON and figures
+└── paper/                    # references.bib (+ LaTeX draft, planned)
 ```
 
 ## License

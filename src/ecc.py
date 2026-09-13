@@ -35,14 +35,12 @@ def _crc(index, data):
     return zlib.crc32(index.to_bytes(4, "big") + data) & 0xFFFFFFFF
 
 
-def encode(data, data_bytes=8, inner_parity=None, parity_records=4,
-           block_records=64, base=codec):
+def encode(data, data_bytes=8, parity_records=4, block_records=64, base=codec):
     """Encode bytes into error-corrected DNA oligos plus out-of-band meta.
 
     `base` is the base codec module that maps records to oligos (rotating `codec`
     or `screen_codec`); it must expose `encode(data, payload_bytes)` and
-    `decode_one(oligo, meta)`. inner_parity is accepted for interface symmetry but
-    unused: detection is a fixed 4-byte CRC per record.
+    `decode_one(oligo, meta)`. Detection is a fixed 4-byte CRC per record.
     """
     D, P = data_bytes, parity_records
     if block_records + P > RS_MAX:
