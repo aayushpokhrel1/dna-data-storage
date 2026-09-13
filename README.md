@@ -65,6 +65,10 @@ A runnable, tested codec plus a benchmark, kept honest and measurable:
 - **Context:** the theoretical density of DNA storage next to silicon and flash, as
   illustrative background, not a headline claim.
 
+Positioning against the canonical DNA-storage works (Church, Goldman, Grass, Erlich,
+Organick), with verified numbers and a clear modeled-vs-measured split, is in
+[`docs/literature-comparison.md`](docs/literature-comparison.md).
+
 ## Open questions (to decide together before building)
 
 - **Which error-correction scheme:** Reed-Solomon (handles substitutions well),
