@@ -14,9 +14,10 @@
 > code for indels (S6) are done, the full substance program. screening+RS dominates the
 > density-robustness frontier, RS matches or beats fountain at fixed redundancy
 > (fountain's edge is ratelessness), per-file retrieval is O(1) in the archive size,
-> and marker resync roughly doubles base recovery under deletions. Code in `src/` with
-> 50 passing assertion checks across nine `test_*.py` files. The paper draft (M5) is
-> next.
+> and marker resync + inner RS (integrated into the pipeline) recovers deletions the
+> detect-and-erase baseline loses. Headline runs use a realistic ~150-200 nt oligo
+> length (screening+RS ~0.78 bits/nt at 1x redundancy). Code in `src/` with 52 passing
+> assertion checks across nine `test_*.py` files. The paper draft (M5) is next.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -157,14 +158,20 @@ access. Kept computational and honest, no "DNA beats silicon".
       the O(M) whole-pool decode): `results/figures/random_access.png`. Checks in
       `src/test_pool.py` (roundtrip, subset-only access, cross-file isolation,
       recovery under channel).
-- [x] **S6 - Marker resync inner code.** `src/markercode.py` inserts a known 4-mer
-      marker every `period` bases; on decode it re-anchors on the markers so an indel's
-      damage is confined to one run instead of desynchronizing the whole oligo.
-      Measured (`benchmark.indel_confinement` -> `results/figures/indel.png`): under
-      per-base deletions, marker resync recovers ~0.84 of bases at 1% vs ~0.34 without
-      markers. Framed honestly as resynchronization (confinement), not full in-place
-      indel correction (that is Davey-MacKay watermark + soft decoding, out of scope).
-      Checks in `src/test_markercode.py`.
+- [x] **S6 - Indel handling: marker resync + inner RS, integrated.**
+      `src/markercode.py` inserts a known 4-mer marker every `period` bases and
+      re-anchors on decode, confining an indel to one run. This is now wired into the
+      pipeline: `ecc.encode(..., inner_nsym=, marker_period=)` adds a per-oligo inner
+      Reed-Solomon code so the residual local byte errors a resynced indel leaves are
+      corrected, and the oligo is recovered instead of erased. End-to-end
+      (`benchmark.indel_pipeline` -> `results/figures/indel.png`): with the screening
+      base codec the integrated codec recovers deletions up to ~1% that the
+      detect-and-erase baseline loses. Key finding: this requires an error-LOCALIZED
+      base codec (screening's 2-bit packing) -- the rotating codec's big-integer
+      records spread one base error across the whole record, so markers alone cannot
+      help it (the M2 error-propagation point). Full in-place indel correction
+      (Davey-MacKay watermark + soft decoding) remains out of scope. Checks in
+      `src/test_markercode.py` and `src/test_ecc.py`.
 
 - [ ] **M5 - Paper draft.** Write the manuscript in `paper/`, covering the framework,
       the codec/ECC families, the comparison, random access, and the cost study.

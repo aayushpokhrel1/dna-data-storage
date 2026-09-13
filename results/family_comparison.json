@@ -11,48 +11,48 @@
   "coverage": 8,
   "families": {
     "rotating+RS": {
-      "bits_per_nt": 0.5289256198347108,
+      "bits_per_nt": 0.6336633663366337,
       "recovery": [
         1.0,
         1.0,
         1.0,
-        0.875,
+        0.0,
         0.0,
         0.0
       ],
       "threshold": 0.01
     },
     "rotating+fountain": {
-      "bits_per_nt": 0.5289256198347108,
+      "bits_per_nt": 0.6336633663366337,
+      "recovery": [
+        1.0,
+        1.0,
+        0.75,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "threshold": 0.005
+    },
+    "screening+RS": {
+      "bits_per_nt": 0.7804878048780488,
       "recovery": [
         1.0,
         1.0,
         1.0,
-        0.375,
+        0.0,
         0.0,
         0.0
       ],
       "threshold": 0.01
     },
-    "screening+RS": {
-      "bits_per_nt": 0.64,
+    "screening+fountain": {
+      "bits_per_nt": 0.7804878048780488,
       "recovery": [
-        1.0,
         1.0,
         1.0,
         1.0,
         0.0,
-        0.0
-      ],
-      "threshold": 0.02
-    },
-    "screening+fountain": {
-      "bits_per_nt": 0.64,
-      "recovery": [
-        1.0,
-        1.0,
-        1.0,
-        0.75,
         0.0,
         0.0
       ],

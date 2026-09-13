@@ -87,6 +87,12 @@ def test_indel_confinement_beats_naive():
     assert r["with_markers"][1] > r["without"][1], "markers must confine deletions"
 
 
+def test_indel_pipeline_integration_helps():
+    r = benchmark.indel_pipeline(del_rates=[0.0, 0.01], coverage=3, trials=4)
+    assert r["detect_erase"][0] == 1.0 and r["marker_inner"][0] == 1.0  # clean
+    assert r["marker_inner"][1] > r["detect_erase"][1], "integration must help at 1%"
+
+
 def test_code_rate_keys():
     oligos, meta = ecc.encode(DATA, data_bytes=8, parity_records=4)
     cr = benchmark.code_rate(len(DATA), oligos, meta)

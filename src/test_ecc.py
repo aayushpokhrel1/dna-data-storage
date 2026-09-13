@@ -102,6 +102,26 @@ def test_exceeds_capacity_raises():
         pass
 
 
+def test_marker_inner_recovers_deletions_erasure_cannot():
+    import channel
+    import screen_codec
+    data = bytes((i * 5 + 3) % 256 for i in range(512))
+    common = dict(data_bytes=32, parity_records=6, block_records=16, base=screen_codec)
+
+    def ok(oligos, meta):
+        try:
+            return ecc.decode(oligos, meta, base=screen_codec) == data
+        except Exception:
+            return False
+
+    # detect-and-erase loses these deletions (a deletion desyncs a whole oligo)
+    ob, mb = ecc.encode(data, **common)
+    assert not ok(channel.corrupt(ob, p_del=0.01, coverage=3, seed=0), mb)
+    # marker resync + inner RS turns each deletion into correctable local errors
+    oi, mi = ecc.encode(data, **common, inner_nsym=12, marker_period=16)
+    assert ok(channel.corrupt(oi, p_del=0.01, coverage=3, seed=0), mi)
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:

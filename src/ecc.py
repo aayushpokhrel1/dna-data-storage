@@ -20,6 +20,7 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(__file__))
 import codec
+import markercode
 
 from reedsolo import RSCodec, ReedSolomonError
 
@@ -35,12 +36,32 @@ def _crc(index, data):
     return zlib.crc32(index.to_bytes(4, "big") + data) & 0xFFFFFFFF
 
 
-def encode(data, data_bytes=8, parity_records=4, block_records=64, base=codec):
+def encode(data, data_bytes=8, parity_records=4, block_records=64, base=codec,
+           inner_nsym=0, marker_period=0):
     """Encode bytes into error-corrected DNA oligos plus out-of-band meta.
 
     `base` is the base codec module that maps records to oligos (rotating `codec`
     or `screen_codec`); it must expose `encode(data, payload_bytes)` and
     `decode_one(oligo, meta)`. Detection is a fixed 4-byte CRC per record.
+
+    Two optional inner layers make the codec survive insertions/deletions instead
+    of erasing the whole oligo (both default off, keeping the plain detect-and-erase
+    behavior):
+      - `inner_nsym` > 0 adds that many Reed-Solomon parity bytes per oligo, which
+        correct the residual substitution-like errors a resynced indel leaves behind;
+      - `marker_period` > 0 wraps each oligo with resync markers (see `markercode`)
+        so an indel's damage is confined to one run rather than desynchronizing the
+        whole oligo.
+    Used together they form a concatenated code: markers turn an indel into a few
+    local byte errors, and the inner RS corrects them, so the oligo is recovered
+    rather than lost.
+
+    This requires an error-LOCALIZED base codec, i.e. `base=screen_codec` (2 bits/nt,
+    per-byte packing). The rotating `codec` encodes each record as one base-3 big
+    integer, so a single base error propagates through base-256 carries into ~half the
+    record's bytes, which the inner RS cannot repair; with the rotating codec these
+    layers do not help. This mirrors the M2 note on why in-place correction needs
+    localized coding.
     """
     D, P = data_bytes, parity_records
     if block_records + P > RS_MAX:
@@ -65,14 +86,19 @@ def encode(data, data_bytes=8, parity_records=4, block_records=64, base=codec):
         records.extend(blk)
         records.extend(bytes(pr) for pr in parity)
 
-    # inner CRC over (global index + record), appended to each record
+    # inner CRC over (global index + record), then optional inner RS parity
+    inner = RSCodec(inner_nsym) if inner_nsym else None
     framed = []
     for gi, rec in enumerate(records):
-        framed.append(bytes(rec) + _crc(gi, bytes(rec)).to_bytes(CRC_BYTES, "big"))
+        f = bytes(rec) + _crc(gi, bytes(rec)).to_bytes(CRC_BYTES, "big")
+        framed.append(bytes(inner.encode(f)) if inner else f)
 
-    record_len = D + CRC_BYTES
+    record_len = D + CRC_BYTES + inner_nsym
     blob = b"".join(framed)
     oligos, cmeta = base.encode(blob, payload_bytes=record_len)
+    oligo_len = len(oligos[0]) if oligos else 0
+    if marker_period:
+        oligos = [markercode.encode(o, marker_period) for o in oligos]
     meta = {
         **cmeta,
         "ecc": {
@@ -81,6 +107,9 @@ def encode(data, data_bytes=8, parity_records=4, block_records=64, base=codec):
             "block_sizes": block_sizes,
             "total_len": total_len,
             "record_len": record_len,
+            "inner_nsym": inner_nsym,
+            "marker_period": marker_period,
+            "oligo_len": oligo_len,
         },
     }
     return oligos, meta
@@ -93,17 +122,28 @@ def decode(oligos, meta, base=codec):
     """
     e = meta["ecc"]
     D, P = e["data_bytes"], e["parity_records"]
+    inner_nsym, marker_period = e.get("inner_nsym", 0), e.get("marker_period", 0)
+    oligo_len = e.get("oligo_len", 0)
+    inner = RSCodec(inner_nsym) if inner_nsym else None
     outer = RSCodec(P)
 
     # Decode reads individually and keep the first CRC-valid read per index.
     # With sequencing coverage (multiple reads per oligo), one clean read is
     # enough to fill a slot, so a damaged read of an otherwise-covered oligo
-    # does not cost an erasure.
+    # does not cost an erasure. When enabled, markers resync each read (confining
+    # indels) and the inner RS corrects the residual byte errors before the CRC.
     good = {}
     for oligo in oligos:
+        if marker_period:
+            oligo = markercode.decode(oligo, oligo_len, marker_period)
         idx, framed = base.decode_one(oligo, meta)
         if idx in good:
             continue
+        if inner:
+            try:
+                framed = bytes(inner.decode(framed)[0])
+            except ReedSolomonError:
+                continue  # inner code could not repair this read
         rec, crc = framed[:D], framed[D:D + CRC_BYTES]
         if _crc(idx, rec) == int.from_bytes(crc, "big"):
             good[idx] = rec

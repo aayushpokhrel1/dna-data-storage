@@ -44,7 +44,7 @@ def fig_recovery():
     for cov in [1, 8, 20]:
         res = benchmark.sweep(data, rates, trials=10, seed=0,
                               ratio=benchmark.LIT_RATIO, coverage=cov,
-                              data_bytes=8, parity_records=4)
+                              data_bytes=32, parity_records=4)
         ax.plot(res["rates"], res["recovery"], marker="o", label=f"coverage {cov}")
 
     ax.set_xlabel("per-base error rate")
@@ -76,7 +76,7 @@ def fig_density():
 
 def fig_constraints():
     """GC content and homopolymer-run distributions of an encoded pool."""
-    oligos, _ = ecc.encode(bytes(range(256)), data_bytes=8, parity_records=4)
+    oligos, _ = ecc.encode(bytes(range(256)) * 4, data_bytes=32, parity_records=4)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
@@ -199,15 +199,17 @@ def fig_random_access():
 
 
 def fig_indel():
-    """Marker resync vs naive: fraction of bases recovered under deletions (S6)."""
-    r = benchmark.indel_confinement()
+    """End-to-end deletion recovery: detect-and-erase vs marker resync + inner RS."""
+    r = benchmark.indel_pipeline()
     fig, ax = plt.subplots()
-    ax.plot(r["del_rates"], r["with_markers"], marker="o", label="marker resync")
-    ax.plot(r["del_rates"], r["without"], marker="s", label="no markers (naive)")
+    ax.plot(r["del_rates"], r["detect_erase"], marker="s", label="detect-and-erase")
+    ax.plot(r["del_rates"], r["marker_inner"], marker="o",
+            label="marker resync + inner RS")
     ax.set_xlabel("deletion rate per base")
-    ax.set_ylabel("fraction of bases recovered correctly")
-    ax.set_title(f"Marker resync confines deletion damage (period {r['period']})")
-    ax.set_ylim(0, 1.02)
+    ax.set_ylabel("fraction of payloads fully recovered")
+    ax.set_title("Indel recovery: markers + inner RS vs detect-and-erase "
+                 f"(screening, coverage {r['coverage']})")
+    ax.set_ylim(-0.02, 1.02)
     ax.legend()
     ax.grid(alpha=0.3)
     return _save(fig, "indel.png")

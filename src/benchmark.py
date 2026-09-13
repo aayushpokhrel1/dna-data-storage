@@ -280,24 +280,61 @@ def indel_confinement(bases_len=512, del_rates=(0.0, 0.005, 0.01, 0.02, 0.05),
             "without": without, "period": period}
 
 
+def indel_pipeline(del_rates=(0.0, 0.005, 0.01, 0.015, 0.02, 0.03), coverage=3,
+                   data_bytes=32, parity_records=6, block_records=16, inner_nsym=12,
+                   marker_period=16, trials=8, seed=0):
+    """End-to-end deletion recovery: detect-and-erase vs marker resync + inner RS.
+
+    Uses the screening base codec (error-localized 2-bit packing); markers turn each
+    deletion into a few local byte errors that the inner RS corrects, so the oligo is
+    recovered instead of erased. The rotating codec's big-integer records spread a
+    base error across the whole record, so this integration needs screening.
+    """
+    data = bytes((i * 5 + 3) % 256 for i in range(data_bytes * 16))
+
+    def frac(extra, r):
+        ok = 0
+        for t in range(trials):
+            oligos, meta = ecc.encode(data, data_bytes=data_bytes,
+                                      parity_records=parity_records,
+                                      block_records=block_records, base=screen_codec,
+                                      **extra)
+            reads = channel.corrupt(oligos, p_del=r, coverage=coverage, seed=seed + t)
+            try:
+                if ecc.decode(reads, meta, base=screen_codec) == data:
+                    ok += 1
+            except (ecc.RecoveryError, ReedSolomonError):
+                pass
+        return ok / trials
+
+    return {
+        "del_rates": list(del_rates),
+        "detect_erase": [frac({}, r) for r in del_rates],
+        "marker_inner": [frac(dict(inner_nsym=inner_nsym,
+                                   marker_period=marker_period), r) for r in del_rates],
+        "coverage": coverage, "inner_nsym": inner_nsym, "marker_period": marker_period,
+    }
+
+
 def default_family_comparison():
     """The standard cross-family run, single source for the JSON and the figure."""
-    data = bytes(range(256)) * 2  # 512 bytes
+    data = bytes(range(256)) * 4  # 1024 bytes
     rates = [0.0, 0.005, 0.01, 0.02, 0.05, 0.1]
+    # data_bytes=32 -> realistic ~150-200 nt oligos
     return compare_families(data, rates, overhead=1.0, coverage=8, trials=8,
-                            data_bytes=16)
+                            data_bytes=32)
 
 
 def default_cost_study():
     """The standard S4 run: the coverage x redundancy grid (for the frontier-winning
     screening+RS family) and the large-K dropout RS-vs-fountain study. Single source
     for the JSON and the figures."""
-    grid = cost_grid(bytes(range(256)) * 2, rate=0.02, coverages=[1, 2, 4, 8, 16],
+    grid = cost_grid(bytes(range(256)) * 4, rate=0.02, coverages=[1, 2, 4, 8, 16],
                      overheads=[0.25, 0.5, 1.0, 2.0], base=screen_codec,
-                     trials=8, data_bytes=16)
-    big = bytes((i * 131 + 7) % 256 for i in range(3000))  # K ~ 188, multi-block RS
+                     trials=8, data_bytes=32)
+    big = bytes((i * 131 + 7) % 256 for i in range(6016))  # K ~ 188, multi-block RS
     drop = dropout_study(big, overheads=[0.25, 0.5, 0.75, 1.0, 1.5], p_drop=0.3,
-                         coverage=1, block_records=64, trials=6)
+                         coverage=1, block_records=64, trials=6, data_bytes=32)
     return {"grid": grid, "dropout": drop}
 
 
@@ -308,14 +345,14 @@ def main(smoke=False):
         rates = [0.0, 0.01, 0.05]
         trials = 3
         coverage = 10
-        ecc_kwargs = {"data_bytes": 8, "parity_records": 4}
+        ecc_kwargs = {"data_bytes": 32, "parity_records": 4}
     else:
-        data = bytes(range(256))
+        data = bytes(range(256)) * 4  # 1024 bytes
         # spans synthesis-only (~0.7%) through nanopore-scale (~10%) per-base error
         rates = [0.0, 0.005, 0.01, 0.02, 0.05, 0.1]
         trials = 20
         coverage = 10
-        ecc_kwargs = {"data_bytes": 8, "parity_records": 4}
+        ecc_kwargs = {"data_bytes": 32, "parity_records": 4}  # realistic oligo length
 
     result = sweep(data, rates, trials, seed=0, ratio=LIT_RATIO,
                    coverage=coverage, **ecc_kwargs)
