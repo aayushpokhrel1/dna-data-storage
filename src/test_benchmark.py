@@ -80,6 +80,13 @@ def test_cost_grid_shape_and_monotonic():
     assert rec[-1][-1] >= rec[0][-1]
 
 
+def test_indel_confinement_beats_naive():
+    r = benchmark.indel_confinement(bases_len=256, del_rates=[0.0, 0.02],
+                                    period=16, trials=4)
+    assert r["with_markers"][0] == 1.0 and r["without"][0] == 1.0  # clean at rate 0
+    assert r["with_markers"][1] > r["without"][1], "markers must confine deletions"
+
+
 def test_code_rate_keys():
     oligos, meta = ecc.encode(DATA, data_bytes=8, parity_records=4)
     cr = benchmark.code_rate(len(DATA), oligos, meta)

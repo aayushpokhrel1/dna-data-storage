@@ -198,11 +198,26 @@ def fig_random_access():
     return _save(fig, "random_access.png")
 
 
+def fig_indel():
+    """Marker resync vs naive: fraction of bases recovered under deletions (S6)."""
+    r = benchmark.indel_confinement()
+    fig, ax = plt.subplots()
+    ax.plot(r["del_rates"], r["with_markers"], marker="o", label="marker resync")
+    ax.plot(r["del_rates"], r["without"], marker="s", label="no markers (naive)")
+    ax.set_xlabel("deletion rate per base")
+    ax.set_ylabel("fraction of bases recovered correctly")
+    ax.set_title(f"Marker resync confines deletion damage (period {r['period']})")
+    ax.set_ylim(0, 1.02)
+    ax.legend()
+    ax.grid(alpha=0.3)
+    return _save(fig, "indel.png")
+
+
 def main():
     """Render all figures and verify each file was written."""
     cost = benchmark.default_cost_study()  # compute once, shared by both S4 figures
     paths = [fig_recovery(), fig_density(), fig_constraints(), fig_pareto(),
-             fig_cost(cost), fig_dropout(cost), fig_random_access()]
+             fig_cost(cost), fig_dropout(cost), fig_random_access(), fig_indel()]
     for path in paths:
         assert os.path.exists(path), f"missing figure: {path}"
         assert os.path.getsize(path) > 0, f"empty figure: {path}"

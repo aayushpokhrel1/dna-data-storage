@@ -10,11 +10,13 @@
 > codec/ECC families across density, robustness, and cost: the screening codec (S1,
 > `src/screen_codec.py`, ~2 bits/nt with a guaranteed GC window) and the fountain
 > codec (S2, `src/fountain.py`), and the cross-family benchmark + density-robustness
-> Pareto frontier (S3), the coverage/parity cost study (S4), and random access (S5) are done; screening+RS
-> dominates the density-robustness frontier, RS matches or beats fountain at fixed
-> redundancy (fountain's edge is ratelessness), and per-file retrieval is O(1) in the
-> archive size. Code in `src/` with 46 passing assertion checks across eight
-> `test_*.py` files. Remaining sections are marked **planned**.
+> Pareto frontier (S3), the coverage/parity cost study (S4), random access (S5), and a marker resync inner
+> code for indels (S6) are done, the full substance program. screening+RS dominates the
+> density-robustness frontier, RS matches or beats fountain at fixed redundancy
+> (fountain's edge is ratelessness), per-file retrieval is O(1) in the archive size,
+> and marker resync roughly doubles base recovery under deletions. Code in `src/` with
+> 50 passing assertion checks across nine `test_*.py` files. The paper draft (M5) is
+> next.
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -155,8 +157,14 @@ access. Kept computational and honest, no "DNA beats silicon".
       the O(M) whole-pool decode): `results/figures/random_access.png`. Checks in
       `src/test_pool.py` (roundtrip, subset-only access, cross-file isolation,
       recovery under channel).
-- [ ] **S6 - Indel-correcting inner code.** Marker/watermark code that corrects
-      insertions/deletions in place instead of discarding oligos (the stretch novelty).
+- [x] **S6 - Marker resync inner code.** `src/markercode.py` inserts a known 4-mer
+      marker every `period` bases; on decode it re-anchors on the markers so an indel's
+      damage is confined to one run instead of desynchronizing the whole oligo.
+      Measured (`benchmark.indel_confinement` -> `results/figures/indel.png`): under
+      per-base deletions, marker resync recovers ~0.84 of bases at 1% vs ~0.34 without
+      markers. Framed honestly as resynchronization (confinement), not full in-place
+      indel correction (that is Davey-MacKay watermark + soft decoding, out of scope).
+      Checks in `src/test_markercode.py`.
 
 - [ ] **M5 - Paper draft.** Write the manuscript in `paper/`, covering the framework,
       the codec/ECC families, the comparison, random access, and the cost study.

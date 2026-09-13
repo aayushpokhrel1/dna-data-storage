@@ -17,11 +17,14 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
+import random
+
 import channel
 import codec
 import constraints
 import ecc
 import fountain
+import markercode
 import screen_codec
 from reedsolo import ReedSolomonError
 
@@ -235,6 +238,46 @@ def dropout_study(data, overheads, p_drop=0.3, coverage=4, data_bytes=16,
                                          coverage, p_drop=p_drop))
         out[name] = recs
     return out
+
+
+def _rotating_bases(n, seed):
+    rng = random.Random(seed)
+    out, prev = [], "A"
+    for _ in range(n):
+        b = rng.choice([x for x in "ACGT" if x != prev])
+        out.append(b)
+        prev = b
+    return "".join(out)
+
+
+def _correct_fraction(a, b):
+    n = min(len(a), len(b))
+    return sum(x == y for x, y in zip(a[:n], b[:n])) / n if n else 0.0
+
+
+def indel_confinement(bases_len=512, del_rates=(0.0, 0.005, 0.01, 0.02, 0.05),
+                      period=16, trials=10, seed=0):
+    """Fraction of bases recovered vs deletion rate, with marker resync vs without.
+
+    Shows the S6 result: a deletion without markers shifts every downstream base
+    (recovery falls off fast), while the marker layer re-anchors and confines the
+    damage to one run (recovery stays high).
+    """
+    with_markers, without = [], []
+    for r in del_rates:
+        wm, wo = [], []
+        for t in range(trials):
+            bases = _rotating_bases(bases_len, seed + t)
+            (read_m,) = channel.corrupt([markercode.encode(bases, period=period)],
+                                        p_del=r, seed=seed + t)
+            wm.append(_correct_fraction(
+                markercode.decode(read_m, bases_len, period=period), bases))
+            (read_o,) = channel.corrupt([bases], p_del=r, seed=seed + t)
+            wo.append(_correct_fraction(read_o, bases))
+        with_markers.append(sum(wm) / len(wm))
+        without.append(sum(wo) / len(wo))
+    return {"del_rates": list(del_rates), "with_markers": with_markers,
+            "without": without, "period": period}
 
 
 def default_family_comparison():
