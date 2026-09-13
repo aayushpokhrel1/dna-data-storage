@@ -102,6 +102,15 @@ def test_exceeds_capacity_raises():
         pass
 
 
+def test_large_multiblock_payload_recovers():
+    import channel
+    rng = random.Random(7)
+    data = bytes(rng.randrange(256) for _ in range(8192))  # spans many RS blocks
+    oligos, meta = ecc.encode(data, data_bytes=32, parity_records=6, block_records=64)
+    reads = channel.corrupt(oligos, p_sub=0.002, p_drop=0.01, coverage=5, seed=0)
+    assert ecc.decode(reads, meta) == data
+
+
 def test_marker_inner_recovers_deletions_erasure_cannot():
     import channel
     import screen_codec

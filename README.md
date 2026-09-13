@@ -207,6 +207,13 @@ Regenerate every figure from the measured numbers:
 python src/figures.py              # writes results/figures/*.png
 ```
 
+Run the end-to-end scale demo (stores this codec's own source, ~90 KB / ~3000
+oligos, in DNA and recovers it exactly through a realistic channel):
+
+```bash
+python src/scale_demo.py
+```
+
 Check citation integrity (bib fields present, every `\cite` defined once a draft
 exists):
 
@@ -230,6 +237,7 @@ dna-data-storage/
 │   ├── markercode.py         # marker resync inner code (indels)
 │   ├── channel.py            # synthesis/sequencing error channel
 │   ├── pool.py               # random access over a mixed file pool
+│   ├── scale_demo.py         # end-to-end ~90 KB real-file storage + recovery
 │   ├── benchmark.py          # metrics, sweeps, cross-family + cost studies
 │   ├── figures.py            # publication figures
 │   ├── check_citations.py    # citation integrity
