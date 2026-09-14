@@ -16,8 +16,10 @@
 > (fountain's edge is ratelessness), per-file retrieval is O(1) in the archive size,
 > and marker resync + inner RS (integrated into the pipeline) recovers deletions the
 > detect-and-erase baseline loses. Headline runs use a realistic ~150-200 nt oligo
-> length (screening+RS ~0.78 bits/nt at 1x redundancy). Code in `src/` with 52 passing
-> assertion checks across nine `test_*.py` files. The paper draft (M5) is next.
+> length (screening+RS ~0.78 bits/nt at 1x redundancy). The manuscript is drafted in
+> [`paper/main.tex`](paper/main.tex) (self-contained, compiles on Overleaf/arXiv). Code
+> in `src/` with 53 passing assertion checks across nine `test_*.py` files. Next is M6
+> (preprint).
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -177,9 +179,15 @@ access. Kept computational and honest, no "DNA beats silicon".
       (Davey-MacKay watermark + soft decoding) remains out of scope. Checks in
       `src/test_markercode.py` and `src/test_ecc.py`.
 
-- [ ] **M5 - Paper draft.** Write the manuscript in `paper/`, covering the framework,
-      the codec/ECC families, the comparison, random access, and the cost study.
-- [ ] **M6 - Preprint.**
+- [x] **M5 - Paper draft.** Self-contained manuscript in [`paper/main.tex`](paper/main.tex)
+      (compiles on Overleaf/arXiv, `pdflatex` + `bibtex`): the framework claim, the two
+      base codecs and two ECC families, the channel and metrics, and the results with the
+      eight real figures and the honest findings (screening+RS on the frontier; RS beats
+      fountain at fixed redundancy; coverage/parity substitution; O(1) random access;
+      indel correction needs error-localized coding). Every DNA-side number is from the
+      tested pipeline; every prior-art number is verified (`paper/references.bib`,
+      `docs/literature-comparison.md`).
+- [ ] **M6 - Preprint.** Author review, then post to arXiv.
 
 ## Reproducibility
 

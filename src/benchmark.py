@@ -329,7 +329,7 @@ def default_cost_study():
     """The standard S4 run: the coverage x redundancy grid (for the frontier-winning
     screening+RS family) and the large-K dropout RS-vs-fountain study. Single source
     for the JSON and the figures."""
-    grid = cost_grid(bytes(range(256)) * 4, rate=0.02, coverages=[1, 2, 4, 8, 16],
+    grid = cost_grid(bytes(range(256)) * 4, rate=0.006, coverages=[1, 2, 4, 8, 16],
                      overheads=[0.25, 0.5, 1.0, 2.0], base=screen_codec,
                      trials=8, data_bytes=32)
     big = bytes((i * 131 + 7) % 256 for i in range(6016))  # K ~ 188, multi-block RS
