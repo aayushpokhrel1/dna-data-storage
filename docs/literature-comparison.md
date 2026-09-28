@@ -19,19 +19,24 @@ bits/nt figure was verified against the source; qualitative cells avoid inventin
 | Grass 2015 [`grass2015`] | file in silica, error-free | Reed-Solomon (inner + outer) | as erasures | no | **1.14** (verified) |
 | Erlich 2017 [`erlich2017`] | 2.1 MB, near Shannon capacity | fountain (LT) + RS droplet screen | dropouts as erasures | no | **1.57** (coding potential 1.98) (verified) |
 | Organick 2018 [`organick2018`] | 200 MB, 13M oligos, error-free | RS + read consensus | as erasures | yes (PCR primers) | competitive (qualitative) |
-| **This work (modeled)** | framework + benchmark, in simulation | **RS and fountain (both, compared)** | **marker resync + inner RS (integrated)** | yes (file-id barcode) | ~0.78 at 1x redundancy, up to ~1.5 at low overhead |
+| **This work (modeled)** | framework + benchmark, in simulation | **RS and fountain (both, compared)** | **marker resync + inner RS (integrated)** | yes (file-id barcode) | 0.780 at 1x redundancy; 1.498 at 4% (screening), 1.216 (rotating) |
 
 ## What the comparison says
 
-- **Density.** Our screening codec reaches ~1.5 bits/nt at low redundancy and realistic
-  ~150-200 nt oligos, between Grass's Reed-Solomon 1.14 and Erlich's fountain 1.57, which
-  is what one expects from using the same coding families. The rotating codec trades
-  density (~1.2 bits/nt) for a homopolymer-run-of-1 guarantee. We do not claim a density
+- **Density.** Our screening codec reaches 1.498 bits/nt at low (4%) redundancy and
+  realistic ~150-200 nt oligos, between Grass's Reed-Solomon 1.14 and Erlich's fountain
+  1.57, which is what one expects from using the same coding families. The rotating codec
+  trades density (1.216 bits/nt at the same settings) for a homopolymer-run-of-1
+  guarantee. Both are measured at the scale-demo settings (`data_bytes=32`,
+  `parity_records=8`, `block_records=200`) on a 92,114-byte payload in 2,999 oligos; the
+  rotating figure is the committed `src/scale_demo.py` run and the screening figure is the
+  same call with `base=screen_codec` (see `docs/OPERATIONS.md`). We do not claim a density
   record; the two verified anchors (Grass, Erlich) frame the range.
 - **Coverage.** Erlich recovered from ~1.3% oligo dropout and Organick from ~10% nanopore
   error, both relying on sequencing coverage. Our cost study reproduces that dependence:
-  coverage is the dominant recovery lever, and coverage and parity are substitutable
-  budgets.
+  coverage is the dominant recovery lever (below coverage 2 nothing recovers at rate
+  0.006, whatever the parity), and coverage and parity are substitutable budgets above
+  that.
 - **What's new here.** No prior work provides an open, apples-to-apples comparison of
   {rotating, screening} x {RS, fountain} under one channel, and the honest finding that
   RS (MDS) matches or beats fountain at fixed redundancy (fountain's edge is

@@ -2,6 +2,12 @@
 
 % Self-contained article, no local class files. Compiles on Overleaf or arXiv
 % (pdflatex + bibtex). Figures are the committed PNGs in ../results/figures.
+%
+% WARNING for scripted edits to this file: do NOT drive a fix script through a
+% shell heredoc (python - <<'PY'). The Bash tool collapses \\ to \, which once
+% turned \num into a literal newline plus "um" here. Write the script to a file
+% and run `python <file>`. Conventions: siunitx custom units are \num{X}~unit
+% (bits/nt, nt, MB, kB); only \percent and \times use \SI. No en or em dashes.
 
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath}
@@ -40,8 +46,8 @@ common channel we report the density-robustness Pareto frontier, a coverage-vers
 redundancy cost surface, codec-level random access, and an integrated marker-resync
 plus inner-Reed-Solomon layer for insertions and deletions. The comparison yields
 several honest findings: the screening codec lifts density (to \num{0.78}~bits/nt at
-unit redundancy and up to $\sim$\num{1.5}~bits/nt at low overhead) and its family sits on
-the frontier; sequencing coverage and coding redundancy are substitutable recovery
+unit redundancy and up to $\sim$\num{1.5}~bits/nt at low overhead) and its families hold
+the frontier point; sequencing coverage and coding redundancy are substitutable recovery
 budgets; Reed-Solomon, being maximum-distance-separable, matches or beats the fountain
 code at fixed redundancy, so the fountain code's advantage is its ratelessness rather
 than better fixed-rate erasure efficiency; per-file random access reads a constant
@@ -234,8 +240,11 @@ oligos, while higher coverage extends full recovery.}
 Placing all four families on common axes, density and the highest per-base rate at which a
 family fully recovers, gives the Pareto frontier of Figure~\ref{fig:pareto}. At unit
 redundancy and coverage eight, the rotating families reach \num{0.634}~bits/nt and the
-screening families \num{0.780}~bits/nt; the screening-Reed-Solomon family is on the
-frontier (highest density with the best robustness among the four). The screening codec's
+screening families \num{0.780}~bits/nt. Both screening families share the frontier point
+(equal density, and both hold full recovery to \SI{1}{\percent} per-base error, as does
+rotating-Reed-Solomon at the lower density; only rotating-fountain trails, at
+\SI{0.5}{\percent}), so at this operating point the base codec and not the
+error-correction family is what separates the four. The screening codec's
 two-bit packing is the density lever; the base codec, not the error-correction family, moves
 the point along the density axis here.
 
@@ -244,7 +253,7 @@ the point along the density axis here.
 \includegraphics[width=0.7\textwidth]{pareto.png}
 \caption{Density versus robustness for the four \{base codec\} $\times$ \{error-correction
 family\} combinations, at matched redundancy and coverage. The screening base codec lifts
-density; the screening-Reed-Solomon family sits on the frontier at this operating point.}
+density; both screening families share the frontier point at this operating point.}
 \label{fig:pareto}
 \end{figure}
 

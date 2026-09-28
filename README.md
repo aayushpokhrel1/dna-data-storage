@@ -1,25 +1,24 @@
 # DNA Data Storage: A Constraint-Aware Codec with Error Correction
 
-> **Status: M4 done.** Constraint-aware rotating codec (M1), Reed-Solomon error
-> correction (M2), a seeded channel + recovery benchmark (M3), and publication
-> figures (M4). The codec recovers fully through ~1% per-base error (coverage 10),
-> and density rises from 0.70 toward the rotating ceiling (log2 3) as the payload
-> grows. Figures in `results/figures/`, error rates and prior art cited in
-> `paper/references.bib` (verified 2026-09-11). A substance program (S1-S6) is now
-> underway to turn the tool into a research contribution, an open framework comparing
-> codec/ECC families across density, robustness, and cost: the screening codec (S1,
-> `src/screen_codec.py`, ~2 bits/nt with a guaranteed GC window) and the fountain
-> codec (S2, `src/fountain.py`), and the cross-family benchmark + density-robustness
-> Pareto frontier (S3), the coverage/parity cost study (S4), random access (S5), and a marker resync inner
-> code for indels (S6) are done, the full substance program. screening+RS dominates the
-> density-robustness frontier, RS matches or beats fountain at fixed redundancy
-> (fountain's edge is ratelessness), per-file retrieval is O(1) in the archive size,
-> and marker resync + inner RS (integrated into the pipeline) recovers deletions the
-> detect-and-erase baseline loses. Headline runs use a realistic ~150-200 nt oligo
-> length (screening+RS ~0.78 bits/nt at 1x redundancy). The manuscript is drafted in
-> [`paper/main.tex`](paper/main.tex) (self-contained, compiles on Overleaf/arXiv). Code
-> in `src/` with 53 passing assertion checks across nine `test_*.py` files. Next is M6
-> (preprint).
+> **Status: M5 done, manuscript drafted. Next is M6 (author review, then arXiv).**
+> The full pipeline is built and measured: two constraint-aware base codecs (rotating,
+> screening), two error-correction families (Reed-Solomon detect-and-erase, LT
+> fountain), a seeded synthesis/sequencing channel, an integrated marker-resync plus
+> inner-RS indel layer, codec-level random access, and a cross-family benchmark, with
+> the manuscript in [`paper/main.tex`](paper/main.tex) (self-contained, compiles on
+> Overleaf/arXiv).
+>
+> Headline numbers, all at the realistic operating point (`data_bytes=32`, ~150-200 nt
+> oligos): screening lifts density from 0.634 to 0.780 bits/nt at 1x redundancy and
+> coverage 8, and reaches 1.498 bits/nt at 4% redundancy (rotating: 1.216, measured on
+> a 92 kB real-file run). Three of the four families hold full recovery to 1% per-base
+> error; only rotating+fountain trails, at 0.5%. Coverage and redundancy are
+> substitutable budgets; RS matches or beats fountain at fixed redundancy, so
+> fountain's edge is ratelessness, not erasure efficiency; per-file retrieval is O(1)
+> in archive size; and the indel layer only works with an error-localized base codec.
+> Code in `src/` with 53 passing assertion checks across nine `test_*.py` files.
+> Prior art and error rates cited in `paper/references.bib` (verified 2026-09-11).
+> Which command produces each number: [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 Working title: *A Constraint-Aware Codec for DNA Data Storage: Encoding, Error
 Correction, and a Recovery Benchmark* (not final).
@@ -71,20 +70,36 @@ Positioning against the canonical DNA-storage works (Church, Goldman, Grass, Erl
 Organick), with verified numbers and a clear modeled-vs-measured split, is in
 [`docs/literature-comparison.md`](docs/literature-comparison.md).
 
-## Open questions (to decide together before building)
+## Settled design decisions
 
-- **Which error-correction scheme:** Reed-Solomon (handles substitutions well),
-  fountain and LT codes (used by high-density DNA-storage work), or LDPC. Insertions
-  and deletions need extra handling (synchronization or marker codes), so the indel
-  strategy is a key decision.
-- **Error model:** what substitution, insertion, and deletion rates to assume for
-  synthesis and sequencing, and from which source.
-- **Random access / addressing:** whether the codec needs to retrieve a single file
-  from a pool, or only encode and decode a whole payload.
-- **How far the silicon comparison goes:** density only, or also cost, latency, and
-  retention.
+These were open questions early on and are now answered and built. They are recorded
+here so they are not re-opened by accident.
 
-## Roadmap (planned)
+- **Error correction: both families, compared.** Reed-Solomon (detect-and-erase, a
+  per-oligo CRC turns any damage into an erasure) and an LT fountain code, benchmarked
+  against each other rather than one chosen. LDPC was not pursued.
+- **Indels: marker resync plus an inner RS code**, integrated into the pipeline and
+  gated by `inner_nsym` / `marker_period`. This confines an indel's damage and corrects
+  the residual local byte errors. Full in-place correction (Davey-MacKay watermark plus
+  soft decoding) is deliberately out of scope and named as future work.
+- **Error model: taken from the literature, not assumed.** Synthesis ~0.7% (sub 0.5 /
+  ins 0.1 / del 0.1), Illumina <1%, nanopore ~10%, from Xu 2021 (`xu2021`), verified
+  against the source. The benchmark uses a 5:1:1 sub:ins:del ratio.
+- **Random access: yes, at the codec level.** A file-id barcode per oligo
+  (`src/pool.py`); retrieval filters the pool and decodes one file's subset. Physical
+  primer-based retrieval is out of scope; the barcode is the codec-level address.
+- **Silicon comparison: illustrative context only.** Density background, never a
+  headline claim. No "DNA beats silicon" framing anywhere.
+- **Scope and licensing.** DNA data storage at the sequence level, independent of the
+  charge-transport physics in papers 1 and 2. MIT for code, CC-BY 4.0 for the paper.
+
+Still open, framed as future work in the draft rather than blockers: a rateless or
+incremental experiment to show fountain's true advantage; wiring the marker layer into
+the fountain path (currently RS-only); full Davey-MacKay indel correction; validation
+against measured per-position error profiles; and majority-vote consensus decoding
+instead of the current first-CRC-valid-read.
+
+## Roadmap
 
 - [x] **M1 - Encoding.** Constraint-aware rotating-code codec in `src/codec.py`
       (bytes <-> DNA oligos, ECC-agnostic) with shared constraint measurement in
@@ -140,16 +155,18 @@ access. Kept computational and honest, no "DNA beats silicon".
       (`ecc`/`fountain` take a `base` codec); `benchmark.compare_families` sweeps all
       {rotating, screening} x {RS, fountain} at matched redundancy and coverage ->
       `results/family_comparison.json`, and `figures.fig_pareto` plots density vs
-      robustness (`results/figures/pareto.png`). Finding: screening lifts density
-      (~0.53 -> 0.64 bits/nt at 1x overhead) and screening+RS dominates the frontier
-      here; fountain trails RS at this small block size (its edge is large,
-      dropout-heavy pools). Checks in `src/test_crossfamily.py` and
+      robustness (`results/figures/pareto.png`). Finding at the current operating point
+      (1x overhead, coverage 8): screening lifts density 0.634 -> 0.780 bits/nt, and
+      both screening families share the frontier point (equal density, both holding full
+      recovery to 1% per-base, as does rotating+RS at the lower density). Only
+      rotating+fountain trails, at 0.5%. So the base codec, not the error-correction
+      family, separates the four here. Checks in `src/test_crossfamily.py` and
       `src/test_benchmark.py`.
 - [x] **S4 - Coverage/parity cost study.** `benchmark.cost_grid` sweeps recovery
       over the (coverage x redundancy) grid at a fixed error rate ->
       `results/figures/cost_grid.png` with an iso-recovery frontier: coverage and
-      parity are substitutable budgets (full recovery at coverage 16 / 0.25x
-      overhead == coverage 8 / 1x == coverage 4 / 2x). `benchmark.dropout_study`
+      parity are substitutable budgets (at rate 0.006, full recovery at coverage 8 /
+      0.25x overhead, coverage 4 / 0.5x, and coverage 2 / 2x). `benchmark.dropout_study`
       compares RS vs fountain at 30% whole-oligo dropout and large K
       (`results/figures/dropout.png`). Honest finding: RS (MDS-optimal for erasures)
       matches or beats fountain at fixed redundancy (full recovery at 0.75x vs 1x);
@@ -255,8 +272,14 @@ dna-data-storage/
 │   ├── check_citations.py    # citation integrity
 │   └── test_*.py             # per-module self-checks
 ├── data/                     # small or synthetic inputs (large data gitignored)
+├── docs/
+│   ├── OPERATIONS.md         # run, verify, which command makes which number, traps
+│   ├── literature-comparison.md
+│   └── superpowers/specs/    # per-feature design records
 ├── results/                  # metrics JSON and figures
-└── paper/                    # references.bib (+ LaTeX draft, planned)
+└── paper/
+    ├── main.tex              # manuscript draft
+    └── references.bib        # verified citations
 ```
 
 ## License

@@ -6,9 +6,11 @@ DNA data storage research (Python).
 
 | File | What it holds |
 | --- | --- |
-| `README.md` | What it is and how to run it |
+| `README.md` | What it is, how to run it, settled design decisions, roadmap |
+| `docs/OPERATIONS.md` | What passing looks like, which command produces which number, environment traps |
 | `docs/literature-comparison.md` | Comparison against the literature |
 | `docs/superpowers/` | Per-feature specs and plans |
+| `paper/main.tex` | The manuscript |
 
 Python; dependencies in `requirements.txt`. For research, a **result and the method that produced it** belong in the repo docs, while the *finding* and what it changes belong in the vault.
 

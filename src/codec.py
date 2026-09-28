@@ -9,6 +9,16 @@ oligos may arrive shuffled or partial.
 ECC-agnostic: the interface is bytes <-> oligos. The error-correction layer (M2)
 wraps this without changing it.
 
+WARNING, error propagation: each record is packed as ONE base-3 big integer, so a
+single wrong base propagates through base-256 carries into roughly half the record's
+bytes (measured 24 of 44 bytes from one deletion). That is fine for the default
+detect-and-erase path (a bad oligo becomes an erasure either way), but it means an
+inner per-oligo code CANNOT repair this codec: markers + inner RS
+(ecc.encode(inner_nsym=, marker_period=)) only work with an error-LOCALIZED base
+codec, i.e. screen_codec's 2-bit-per-base packing. Do not change this to a
+localized packing without re-measuring density: the big integer is what buys the
+~1.58 bits/nt rotating ceiling.
+
 meta is passed out-of-band for M1.
 ponytail: no self-describing in-DNA header yet; add one when the pool must be
 parameter-free (random access from a bare oligo set).
